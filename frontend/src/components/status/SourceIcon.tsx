@@ -1,3 +1,4 @@
+import { SourceGlyph } from '@/components/brand/SourceGlyph'
 import { cn } from '@/lib/cn'
 
 const NAMES: Record<string, string> = {
@@ -26,17 +27,21 @@ export interface SourceIconProps {
   size?: number
   /** Set when the type name is already adjacent (renders decorative). */
   decorative?: boolean
+  /** monogram (default) or the §7.2 monoline glyph (wizard type-picker). */
+  variant?: 'monogram' | 'glyph'
   className?: string
 }
 
 /**
  * Source identity tile (§3.30): a square hairline tile with a 2-letter mono
- * monogram in tide. No third-party logos — the monogram is the shipped default.
+ * monogram in tide. No third-party logos — the monogram is the shipped default;
+ * variant="glyph" swaps in the §7.2 monoline mark.
  */
 export function SourceIcon({
   code,
   size = 34,
   decorative = false,
+  variant = 'monogram',
   className,
 }: SourceIconProps): React.JSX.Element {
   const key = code.toUpperCase()
@@ -53,7 +58,7 @@ export function SourceIcon({
       )}
       style={{ width: size, height: size }}
     >
-      {glyph}
+      {variant === 'glyph' ? <SourceGlyph code={glyph} size={Math.round(size * 0.6)} /> : glyph}
     </span>
   )
 }
