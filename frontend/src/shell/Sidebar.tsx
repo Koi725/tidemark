@@ -6,9 +6,10 @@ import {
   Root,
   Trigger,
 } from '@radix-ui/react-tooltip'
-import { Moon, PanelLeftClose, PanelLeftOpen, Sun } from 'lucide-react'
+import { Moon, PanelLeftClose, PanelLeftOpen, Search, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { TidemarkMark } from '@/components/brand/TidemarkMark'
+import { Kbd } from '@/components/primitives'
 import { cn } from '@/lib/cn'
 import { useTheme } from '@/providers/theme'
 import { useUiStore } from '@/stores/ui'
@@ -87,6 +88,7 @@ export function Sidebar(): React.JSX.Element {
   const { pathname } = useLocation()
   const collapsed = useUiStore((s) => s.sidebarCollapsed)
   const toggle = useUiStore((s) => s.toggleSidebar)
+  const openPalette = useUiStore((s) => s.setPaletteOpen)
   const { theme, toggle: toggleTheme } = useTheme()
 
   return (
@@ -103,6 +105,25 @@ export function Sidebar(): React.JSX.Element {
             <span className="font-display text-h3 tracking-[.02em] text-ink">tidemark</span>
           ) : null}
         </div>
+
+        <button
+          type="button"
+          onClick={() => openPalette(true)}
+          aria-label="Open command palette"
+          aria-keyshortcuts="Meta+K Control+K"
+          className={cn(
+            'tm-touch mb-2 flex h-[36px] items-center gap-2.5 border border-hairline px-2.5 text-body text-ink-muted transition-colors duration-fast hover:border-strong hover:bg-faint hover:text-ink',
+            collapsed && 'justify-center px-0',
+          )}
+        >
+          <Search size={18} strokeWidth={1.5} className="shrink-0" aria-hidden="true" />
+          {!collapsed ? (
+            <>
+              <span className="flex-1 text-left">Search</span>
+              <Kbd>⌘K</Kbd>
+            </>
+          ) : null}
+        </button>
 
         <nav className="flex flex-1 flex-col gap-[4px]">
           {NAV_ITEMS.map((item) => (

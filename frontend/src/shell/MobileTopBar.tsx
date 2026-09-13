@@ -2,6 +2,7 @@ import { Moon, Search, Sun } from 'lucide-react'
 import { TidemarkMark } from '@/components/brand/TidemarkMark'
 import { Button } from '@/components/primitives'
 import { useTheme } from '@/providers/theme'
+import { useUiStore } from '@/stores/ui'
 
 export interface MobileTopBarProps {
   title: string
@@ -10,11 +11,12 @@ export interface MobileTopBarProps {
 /** Mobile top bar (§2): 52px — logo + screen title + search + theme, 44×44 targets. */
 export function MobileTopBar({ title }: MobileTopBarProps): React.JSX.Element {
   const { theme, toggle } = useTheme()
+  const openPalette = useUiStore((s) => s.setPaletteOpen)
   return (
     <div className="flex h-[52px] shrink-0 items-center gap-2 border-b border-hairline px-3 lg:hidden">
       <TidemarkMark size={22} className="shrink-0 text-tide" />
       <span className="min-w-0 flex-1 truncate font-display text-h3 text-ink">{title}</span>
-      <Button variant="icon" aria-label="Search">
+      <Button variant="icon" aria-label="Search" aria-keyshortcuts="Meta+K Control+K" onClick={() => openPalette(true)}>
         <Search size={18} strokeWidth={1.5} aria-hidden="true" />
       </Button>
       <Button
