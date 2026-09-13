@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { LayoutGroup } from 'motion/react'
 import { DatasetCard } from '@/components/cards/DatasetCard'
 import { FilterChipBar } from '@/components/controls/FilterChipBar'
@@ -8,29 +8,22 @@ import { EmptyState } from '@/components/feedback/EmptyState'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { SkeletonDatasetCard } from '@/components/feedback/Skeleton'
 import { SourceIcon } from '@/components/status/SourceIcon'
-import { StatusDot } from '@/components/status/StatusDot'
+import { LiveIndicator } from '@/components/status/LiveIndicator'
 import { HeaderStrip } from '@/shell/HeaderStrip'
 import { useNow } from '@/lib/clock'
 import { formatAgo } from '@/lib/format'
 import { compareBySeverity, DATASET_STATES, stateMeta } from '@/lib/state'
 import type { DatasetState } from '@/lib/state'
 import { useUiStore } from '@/stores/ui'
-import { DATASETS, SOURCES } from '@/mocks'
-import type { DatasetSummary } from '@/mocks'
-
-interface OverviewSearch {
-  mock?: string
-}
+import { useDatasets } from '@/features/datasets'
+import { useSources } from '@/features/sources'
+import type { DatasetSummary, Source } from '@/contracts'
 
 export const Route = createFileRoute('/_app/')({
   component: OverviewRoute,
-  validateSearch: (search: Record<string, unknown>): OverviewSearch => ({
-    mock: typeof search.mock === 'string' ? search.mock : undefined,
-  }),
 })
 
 const GRID_COLUMNS = 'repeat(auto-fill, minmax(250px, 1fr))'
-
 const COUNT_ORDER: readonly DatasetState[] = ['ok', 'warn', 'alert', 'unknown', 'paused']
 
 function countByState(datasets: readonly DatasetSummary[]): Record<DatasetState, number> {
@@ -44,7 +37,7 @@ function compareDatasets(a: DatasetSummary, b: DatasetSummary): number {
   if (bySeverity !== 0) return bySeverity
   const at = a.lastRowAt ? Date.parse(a.lastRowAt) : 0
   const bt = b.lastRowAt ? Date.parse(b.lastRowAt) : 0
-  if (at !== bt) return at - bt // stalest (oldest) first
+  if (at !== bt) return at - bt
   return a.key.localeCompare(b.key)
 }
 
@@ -82,21 +75,20 @@ function CountsMeta({ counts }: { counts: Record<DatasetState, number> }) {
 }
 
 function OverviewRoute() {
-  const { mock } = Route.useSearch()
-  const navigate = useNavigate()
   const now = useNow()
   const [filter, setFilter] = useState('all')
+  const datasetsQuery = useDatasets()
+  const sourcesQuery = useSources()
 
   const hasStaggered = useUiStore((s) => s.hasStaggered)
   const markStaggered = useUiStore((s) => s.markStaggered)
   const animateIn = !hasStaggered
   useEffect(() => {
-    if (!hasStaggered) markStaggered()
-  }, [hasStaggered, markStaggered])
+    if (!hasStaggered && datasetsQuery.isSuccess) markStaggered()
+  }, [hasStaggered, markStaggered, datasetsQuery.isSuccess])
 
-  // ── Mock-driven state overrides (skeleton / empty / error) ──
-  const datasets = mock === 'one' ? DATASETS.slice(0, 1) : DATASETS
-  const sources = mock === 'empty' ? [] : SOURCES
+  const datasets: DatasetSummary[] = useMemo(() => datasetsQuery.data ?? [], [datasetsQuery.data])
+  const sources: Source[] = useMemo(() => sourcesQuery.data ?? [], [sourcesQuery.data])
 
   const counts = useMemo(() => countByState(datasets), [datasets])
   const pausedCount = counts.paused
@@ -110,13 +102,13 @@ function OverviewRoute() {
       { id: 'unknown', label: 'Unknown', count: counts.unknown },
       { id: 'paused', label: 'Paused', count: counts.paused },
     ]
-    const sourceChips: FilterChip[] = SOURCES.filter((s) =>
-      datasets.some((d) => d.sourceId === s.id),
-    ).map((s) => ({
-      id: `src:${s.id}`,
-      label: s.name,
-      count: datasets.filter((d) => d.sourceId === s.id).length,
-    }))
+    const sourceChips: FilterChip[] = sources
+      .filter((s) => datasets.some((d) => d.sourceId === s.id))
+      .map((s) => ({
+        id: `src:${s.id}`,
+        label: s.name,
+        count: datasets.filter((d) => d.sourceId === s.id).length,
+      }))
     const tags = [...new Set(datasets.flatMap((d) => d.tags))]
     const tagChips: FilterChip[] = tags.map((t) => ({
       id: `tag:${t}`,
@@ -124,7 +116,7 @@ function OverviewRoute() {
       count: datasets.filter((d) => d.tags.includes(t)).length,
     }))
     return [...statusChips, ...sourceChips, ...tagChips]
-  }, [datasets, counts])
+  }, [datasets, sources, counts])
 
   const visible = useMemo(
     () => datasets.filter((d) => matches(d, filter, pausedCount)),
@@ -133,14 +125,16 @@ function OverviewRoute() {
 
   const groups = useMemo(
     () =>
-      SOURCES.map((source) => ({
-        source,
-        items: visible.filter((d) => d.sourceId === source.id).sort(compareDatasets),
-      })).filter((g) => g.items.length > 0),
-    [visible],
+      sources
+        .map((source) => ({
+          source,
+          items: visible.filter((d) => d.sourceId === source.id).sort(compareDatasets),
+        }))
+        .filter((g) => g.items.length > 0),
+    [sources, visible],
   )
 
-  const lastProbe = SOURCES.reduce<string | null>((latest, s) => {
+  const lastProbe = sources.reduce<string | null>((latest, s) => {
     if (!s.lastProbeAt) return latest
     if (!latest || Date.parse(s.lastProbeAt) > Date.parse(latest)) return s.lastProbeAt
     return latest
@@ -148,8 +142,7 @@ function OverviewRoute() {
 
   const singleColumn = visible.length === 1
 
-  // ── Non-happy paths ──
-  if (mock === 'loading') {
+  if (datasetsQuery.isPending || sourcesQuery.isPending) {
     return (
       <>
         <HeaderStrip title="Overview" />
@@ -167,7 +160,7 @@ function OverviewRoute() {
     )
   }
 
-  if (mock === 'error') {
+  if (datasetsQuery.isError || sourcesQuery.isError) {
     return (
       <>
         <HeaderStrip title="Overview" />
@@ -175,10 +168,11 @@ function OverviewRoute() {
           <ErrorState
             variant="page"
             headline="Couldn't load datasets"
-            raw={
-              'ECONNREFUSED tidemark-api:8080\nendpoint=GET /api/datasets?view=summary\nprobe_id=ovw-1 attempt=1/3 next_retry=4s'
-            }
-            onRetry={() => navigate({ to: '/', search: {} })}
+            raw={'GET /api/datasets?view=summary failed\nprobe_id=ovw-1 attempt=1/3 next_retry=4s'}
+            onRetry={() => {
+              void datasetsQuery.refetch()
+              void sourcesQuery.refetch()
+            }}
           />
         </div>
       </>
@@ -200,15 +194,14 @@ function OverviewRoute() {
     )
   }
 
-  if (datasets.length === 0 || mock === 'empty-datasets') {
-    const first = SOURCES[0]
+  if (datasets.length === 0) {
     return (
       <>
         <HeaderStrip title="Overview" />
         <div className="p-[var(--tm-pad)]">
           <EmptyState
             title="Nothing monitored yet"
-            body={`${first?.name ?? 'This source'} is connected but no datasets are selected.`}
+            body={`${sources[0]?.name ?? 'This source'} is connected but no datasets are selected.`}
             action={{ label: 'Pick datasets', onClick: () => undefined }}
           />
         </div>
@@ -226,9 +219,7 @@ function OverviewRoute() {
             <span className="font-mono text-mono-sm text-ink-muted">
               last probe {formatAgo(lastProbe, { now })}
             </span>
-            <span title="Live · SSE connected">
-              <StatusDot state="ok" pulse="live" />
-            </span>
+            <LiveIndicator />
           </>
         }
       >
@@ -256,12 +247,7 @@ function OverviewRoute() {
                 }}
               >
                 {group.items.map((dataset, index) => (
-                  <DatasetCard
-                    key={dataset.id}
-                    dataset={dataset}
-                    index={index}
-                    animateIn={animateIn}
-                  />
+                  <DatasetCard key={dataset.id} dataset={dataset} index={index} animateIn={animateIn} />
                 ))}
               </div>
             </section>

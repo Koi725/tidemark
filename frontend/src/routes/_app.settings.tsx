@@ -8,28 +8,20 @@ import { DensityToggle } from '@/components/controls/DensityToggle'
 import { ConfirmDialog } from '@/components/overlays/ConfirmDialog'
 import { CreateTokenDialog } from '@/components/overlays/CreateTokenDialog'
 import { TokenShowOnceModal } from '@/components/overlays/TokenShowOnceModal'
-import { notify } from '@/components/feedback/notify'
+import { Skeleton } from '@/components/feedback/Skeleton'
 import { HeaderStrip } from '@/shell/HeaderStrip'
 import { cn } from '@/lib/cn'
 import { useNow } from '@/lib/clock'
 import { formatAgo } from '@/lib/format'
 import { useUiStore } from '@/stores/ui'
-import { API_TOKENS, SETTINGS, generateToken } from '@/mocks'
-import type { ApiToken, TokenScope } from '@/mocks'
+import { useSettings, usePatchSettings, useTokens, useCreateToken, useRevokeToken } from '@/features/settings'
+import type { ApiToken, RetentionConfig, Settings, TokenScope } from '@/contracts'
 
 export const Route = createFileRoute('/_app/settings')({
   component: SettingsRoute,
 })
 
-function Section({
-  title,
-  description,
-  children,
-}: {
-  title: string
-  description?: string
-  children: ReactNode
-}) {
+function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return (
     <section className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-[var(--tm-gap)]">
       <div className="flex flex-col gap-1">
@@ -54,19 +46,8 @@ const KEYBOARD: Array<[string, ReactNode]> = [
 
 function EgressToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
-    <Frame
-      as="button"
-      type="button"
-      aria-pressed={on}
-      onClick={onToggle}
-      className="flex w-full items-start gap-3 p-[var(--tm-pad)] text-left"
-    >
-      <span
-        className={cn(
-          'mt-0.5 inline-flex h-5 w-9 shrink-0 items-center rounded-none border',
-          on ? 'border-tide bg-tide' : 'border-hairline bg-transparent',
-        )}
-      >
+    <Frame as="button" type="button" aria-pressed={on} onClick={onToggle} className="flex w-full items-start gap-3 p-[var(--tm-pad)] text-left">
+      <span className={cn('mt-0.5 inline-flex h-5 w-9 shrink-0 items-center rounded-none border', on ? 'border-tide bg-tide' : 'border-hairline bg-transparent')}>
         <span
           className="size-[14px] rounded-sm bg-ink transition-transform duration-fast ease-out"
           style={{ transform: on ? 'translateX(18px)' : 'translateX(2px)', background: on ? 'var(--tm-accent-on)' : undefined }}
@@ -83,42 +64,45 @@ function EgressToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   )
 }
 
-function SettingsRoute() {
+/** Mounted only once settings have loaded, so form state initialises from them. */
+function SettingsContent({ settings }: { settings: Settings }): React.JSX.Element {
   const now = useNow()
-  const [email, setEmail] = useState(SETTINGS.email)
-  const [password, setPassword] = useState('')
-  const [tokens, setTokens] = useState<ApiToken[]>([...API_TOKENS])
-  const [retention, setRetention] = useState(SETTINGS.retention)
-  const [egress, setEgress] = useState(SETTINGS.egressStrict)
+  const tokensQuery = useTokens()
+  const patchSettings = usePatchSettings()
+  const createToken = useCreateToken()
+  const revokeToken = useRevokeToken()
   const reduceMotion = useUiStore((s) => s.reduceMotion)
   const setReduceMotion = useUiStore((s) => s.setReduceMotion)
   const tz = useUiStore((s) => s.tz)
   const setTz = useUiStore((s) => s.setTz)
+
+  const [email, setEmail] = useState(settings.email)
+  const [password, setPassword] = useState('')
+  const [retention, setRetention] = useState<RetentionConfig>(settings.retention)
+  const egress = settings.egressStrict
 
   const [createOpen, setCreateOpen] = useState(false)
   const [shownToken, setShownToken] = useState<string | null>(null)
   const [revokeTarget, setRevokeTarget] = useState<ApiToken | null>(null)
   const [egressConfirm, setEgressConfirm] = useState(false)
 
-  const createToken = (name: string, scope: TokenScope): void => {
-    const token = generateToken()
-    setTokens((prev) => [
-      { id: `tok-${Date.now()}`, name, prefix: token.slice(0, 8), scope, lastUsedAt: null, createdAt: new Date().toISOString() },
-      ...prev,
-    ])
+  const tokens = tokensQuery.data ?? []
+
+  const handleCreate = (name: string, scope: TokenScope): void => {
     setCreateOpen(false)
-    setShownToken(token)
+    createToken.mutate(
+      { name, scope },
+      { onSuccess: (created) => setShownToken(created.token) },
+    )
   }
 
   const toggleEgress = (): void => {
     if (egress) setEgressConfirm(true)
-    else setEgress(true)
+    else patchSettings.mutate({ egressStrict: true })
   }
 
   return (
     <>
-      <HeaderStrip title="Settings" />
-
       <div className="mx-auto flex max-w-[860px] flex-col gap-[34px] p-[var(--tm-pad)]">
         <Section title="Profile" description="Single admin by design. Add API tokens for automation.">
           <label className="flex flex-col gap-1.5">
@@ -130,7 +114,7 @@ function SettingsRoute() {
             <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} aria-label="New password" />
             <span className="text-[11px] text-ink-muted">Leave blank to keep the current one.</span>
           </label>
-          <Button variant="primary" className="w-fit" onClick={() => notify('ok', 'Saved')}>
+          <Button variant="primary" className="w-fit" onClick={() => patchSettings.mutate({ email, retention })}>
             Update
           </Button>
         </Section>
@@ -142,9 +126,7 @@ function SettingsRoute() {
                 <KeyRound size={16} strokeWidth={1.5} className="text-ink-muted" aria-hidden="true" />
                 <div className="min-w-0 flex-1">
                   <div className="text-body-sm text-ink">{t.name}</div>
-                  <div className="font-mono text-mono-sm text-ink-muted">
-                    {t.prefix}… · {t.scope}
-                  </div>
+                  <div className="font-mono text-mono-sm text-ink-muted">{t.prefix}… · {t.scope}</div>
                 </div>
                 <span className="font-mono text-mono-sm text-ink-muted">used {formatAgo(t.lastUsedAt, { now })}</span>
                 <Button variant="ghost" className="text-alert" onClick={() => setRevokeTarget(t)}>
@@ -214,11 +196,7 @@ function SettingsRoute() {
             <span className="ml-[46px] text-[11px] text-ink-muted">Overrides your system setting for this browser.</span>
           </label>
           <label className="flex items-center gap-2.5">
-            <Switch
-              checked={tz === 'utc'}
-              onCheckedChange={(on) => setTz(on ? 'utc' : 'local')}
-              aria-label="Show times in UTC"
-            />
+            <Switch checked={tz === 'utc'} onCheckedChange={(on) => setTz(on ? 'utc' : 'local')} aria-label="Show times in UTC" />
             <span className="text-body-sm text-ink">Show times in UTC</span>
           </label>
         </Section>
@@ -235,7 +213,7 @@ function SettingsRoute() {
         </Section>
       </div>
 
-      <CreateTokenDialog open={createOpen} onOpenChange={setCreateOpen} onCreate={createToken} />
+      <CreateTokenDialog open={createOpen} onOpenChange={setCreateOpen} onCreate={handleCreate} />
       <TokenShowOnceModal open={shownToken !== null} token={shownToken ?? ''} onClose={() => setShownToken(null)} />
 
       <ConfirmDialog
@@ -246,10 +224,7 @@ function SettingsRoute() {
         match={revokeTarget?.name ?? ''}
         actionLabel="Revoke"
         onConfirm={() => {
-          if (revokeTarget) {
-            setTokens((prev) => prev.filter((t) => t.id !== revokeTarget.id))
-            notify('ok', `Revoked ${revokeTarget.name}`)
-          }
+          if (revokeTarget) revokeToken.mutate({ id: revokeTarget.id, name: revokeTarget.name })
           setRevokeTarget(null)
         }}
       />
@@ -263,10 +238,28 @@ function SettingsRoute() {
         body="tidemark will stop refusing connections to hosts you haven't configured. Only do this if a notifier needs it."
         actionLabel="Turn off"
         onConfirm={() => {
-          setEgress(false)
+          patchSettings.mutate({ egressStrict: false })
           setEgressConfirm(false)
         }}
       />
+    </>
+  )
+}
+
+function SettingsRoute() {
+  const settingsQuery = useSettings()
+  return (
+    <>
+      <HeaderStrip title="Settings" />
+      {settingsQuery.data ? (
+        <SettingsContent settings={settingsQuery.data} />
+      ) : (
+        <div className="mx-auto flex max-w-[860px] flex-col gap-4 p-[var(--tm-pad)]" aria-busy="true" aria-label="Loading settings">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} variant="row" />
+          ))}
+        </div>
+      )}
     </>
   )
 }

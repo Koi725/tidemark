@@ -1,35 +1,51 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ExternalLink } from 'lucide-react'
 import { Button, Frame, Input, Segmented, Switch, Tag } from '@/components/primitives'
 import { NinetyDayBarStrip } from '@/components/data/NinetyDayBarStrip'
 import { EmptyState } from '@/components/feedback/EmptyState'
-import { notify } from '@/components/feedback/notify'
+import { Skeleton } from '@/components/feedback/Skeleton'
 import { HeaderStrip } from '@/shell/HeaderStrip'
 import { stateMeta } from '@/lib/state'
 import { formatPct } from '@/lib/format'
-import { DATASETS, STATUS_PAGE, previewDatasets } from '@/mocks'
-import type { PublicTheme } from '@/mocks'
+import { useDatasets } from '@/features/datasets'
+import { useStatusPage, usePutStatusPage, usePreviewDatasets } from '@/features/statusPage'
+import type { DatasetSummary, PublicTheme, StatusPageConfig } from '@/contracts'
 
 export const Route = createFileRoute('/_app/status')({
   component: StatusEditorRoute,
 })
 
-function StatusEditorRoute() {
+function StatusEditor({ config, datasets }: { config: StatusPageConfig; datasets: DatasetSummary[] }) {
   const navigate = useNavigate()
-  const [title, setTitle] = useState(STATUS_PAGE.title)
-  const [slug, setSlug] = useState(STATUS_PAGE.slug)
-  const [theme, setTheme] = useState<PublicTheme>(STATUS_PAGE.theme)
-  const [selected, setSelected] = useState<string[]>([...STATUS_PAGE.datasetIds])
-  const [showIncidents, setShowIncidents] = useState(STATUS_PAGE.showIncidents)
-  const [published, setPublished] = useState(STATUS_PAGE.published)
+  const putStatusPage = usePutStatusPage()
+  const [title, setTitle] = useState(config.title)
+  const [slug, setSlug] = useState(config.slug)
+  const [theme, setTheme] = useState<PublicTheme>(config.theme)
+  const [selected, setSelected] = useState<string[]>([...config.datasetIds])
+  const [showIncidents, setShowIncidents] = useState(config.showIncidents)
+  const [published, setPublished] = useState(config.published)
 
-  const preview = useMemo(() => previewDatasets(selected), [selected])
-  const slugTaken = slug !== STATUS_PAGE.slug && slug === 'taken'
+  const previewQuery = usePreviewDatasets(selected)
+  const preview = previewQuery.data ?? []
+  const slugTaken = slug !== config.slug && slug === 'taken'
   const canPublish = selected.length > 0 && !slugTaken
 
   const toggleDataset = (id: string): void =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+
+  const publish = (): void => {
+    putStatusPage.mutate({
+      title,
+      slug,
+      theme,
+      datasetIds: selected,
+      showIncidents,
+      published: true,
+      publishedAt: new Date().toISOString(),
+    })
+    setPublished(true)
+  }
 
   return (
     <>
@@ -50,14 +66,7 @@ function StatusEditorRoute() {
             >
               View public page
             </Button>
-            <Button
-              variant="primary"
-              disabled={!canPublish}
-              onClick={() => {
-                setPublished(true)
-                notify('ok', `Published to status.acme.dev/${slug}`)
-              }}
-            >
+            <Button variant="primary" disabled={!canPublish} onClick={publish}>
               Publish
             </Button>
           </>
@@ -65,7 +74,6 @@ function StatusEditorRoute() {
       />
 
       <div className="grid gap-[var(--tm-gap)] p-[var(--tm-pad)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        {/* left: form */}
         <div className="flex flex-col gap-5">
           <label className="flex flex-col gap-1.5">
             <span className="text-label font-display uppercase tracking-[.1em] text-ink-muted">Title</span>
@@ -99,7 +107,7 @@ function StatusEditorRoute() {
               Datasets shown · {selected.length}
             </span>
             <div className="max-h-[300px] overflow-auto border border-hairline">
-              {DATASETS.map((d) => (
+              {datasets.map((d) => (
                 <label key={d.id} className="flex min-h-[40px] items-center gap-3 border-b border-hairline px-3 last:border-b-0">
                   <input
                     type="checkbox"
@@ -113,7 +121,7 @@ function StatusEditorRoute() {
                 </label>
               ))}
             </div>
-            {!canPublish && selected.length === 0 ? (
+            {selected.length === 0 ? (
               <span className="text-[11px] text-ink-muted">Pick at least one dataset to publish.</span>
             ) : null}
           </div>
@@ -124,7 +132,6 @@ function StatusEditorRoute() {
           </label>
         </div>
 
-        {/* right: live preview */}
         <Frame className="flex flex-col gap-4 p-[var(--tm-pad)]">
           <span className="text-label font-display uppercase tracking-[.1em] text-ink-muted">Live preview</span>
           {preview.length === 0 ? (
@@ -150,4 +157,23 @@ function StatusEditorRoute() {
       </div>
     </>
   )
+}
+
+function StatusEditorRoute() {
+  const configQuery = useStatusPage()
+  const datasetsQuery = useDatasets()
+
+  if (!configQuery.data || !datasetsQuery.data) {
+    return (
+      <>
+        <HeaderStrip title="Status page" />
+        <div className="grid gap-[var(--tm-gap)] p-[var(--tm-pad)] lg:grid-cols-2" aria-busy="true" aria-label="Loading status page">
+          <Skeleton variant="row" height={200} />
+          <Skeleton variant="row" height={200} />
+        </div>
+      </>
+    )
+  }
+
+  return <StatusEditor config={configQuery.data} datasets={datasetsQuery.data} />
 }

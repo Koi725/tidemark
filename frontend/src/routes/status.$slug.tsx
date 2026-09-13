@@ -7,10 +7,10 @@ import { BadgeSvg } from '@/components/data/BadgeSvg'
 import { notify } from '@/components/feedback/notify'
 import { useNow } from '@/lib/clock'
 import { formatAgo, formatPct } from '@/lib/format'
-import { stateMeta } from '@/lib/state'
+import { stateMeta, worstState } from '@/lib/state'
 import type { DatasetState } from '@/lib/state'
-import { getPublicStatus, publicBannerState } from '@/mocks'
-import type { PublicDataset, PublicStatus, PublicTheme } from '@/mocks'
+import { usePublicStatus } from '@/features/statusPage'
+import type { PublicDataset, PublicStatus, PublicTheme } from '@/contracts'
 
 export const Route = createFileRoute('/status/$slug')({
   component: PublicStatusRoute,
@@ -52,7 +52,8 @@ function badgeValue(d: PublicDataset, now: number): string {
 function PublicStatusRoute() {
   const { slug } = Route.useParams()
   const now = useNow()
-  const status = getPublicStatus(slug)
+  const statusQuery = usePublicStatus(slug)
+  const status = statusQuery.data ?? null
   const [theme, setTheme] = useState<'dark' | 'light'>(() => resolveTheme(status?.theme ?? 'dark'))
 
   useEffect(() => {
@@ -63,6 +64,11 @@ function PublicStatusRoute() {
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)
   }, [status])
+
+  // Still loading — bare centered placeholder (no shell, no chrome).
+  if (statusQuery.isPending) {
+    return <div data-theme={theme} className="min-h-svh bg-canvas" aria-busy="true" />
+  }
 
   // Unknown slug → bare centered page, no nav, no login link (§7b edge).
   if (!status) {
@@ -79,7 +85,7 @@ function PublicStatusRoute() {
     )
   }
 
-  const worst = publicBannerState(status.datasets)
+  const worst = worstState(status.datasets.map((d) => d.state))
   const banner = BANNER[worst](status)
   const BannerIcon = stateMeta[worst].icon
 

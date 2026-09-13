@@ -5,36 +5,25 @@ import { SourceCard } from '@/components/cards/SourceCard'
 import { ConfirmDialog } from '@/components/overlays/ConfirmDialog'
 import { AddSourceWizard } from '@/components/wizard/AddSourceWizard'
 import { EmptyState } from '@/components/feedback/EmptyState'
+import { ErrorState } from '@/components/feedback/ErrorState'
 import { Skeleton } from '@/components/feedback/Skeleton'
 import { Button } from '@/components/primitives'
-import { notify } from '@/components/feedback/notify'
 import { HeaderStrip } from '@/shell/HeaderStrip'
-import { SOURCES } from '@/mocks'
-import type { Source } from '@/mocks'
-
-interface SourcesSearch {
-  mock?: string
-}
+import { useSources, useProbeSource, useDeleteSource } from '@/features/sources'
+import type { Source } from '@/contracts'
 
 export const Route = createFileRoute('/_app/sources')({
   component: SourcesRoute,
-  validateSearch: (search: Record<string, unknown>): SourcesSearch => ({
-    mock: typeof search.mock === 'string' ? search.mock : undefined,
-  }),
 })
 
 function SourcesRoute() {
-  const { mock } = Route.useSearch()
-  const [sources, setSources] = useState<Source[]>(mock === 'empty' ? [] : [...SOURCES])
+  const sourcesQuery = useSources()
+  const probeMutation = useProbeSource()
+  const deleteMutation = useDeleteSource()
   const [wizardOpen, setWizardOpen] = useState(false)
-  const [probingId, setProbingId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Source | null>(null)
 
-  const probe = (source: Source): void => {
-    setProbingId(source.id)
-    notify('info', `Probe queued for ${source.name}`)
-    window.setTimeout(() => setProbingId(null), 1400)
-  }
+  const sources = sourcesQuery.data ?? []
 
   const header = (
     <HeaderStrip
@@ -52,12 +41,19 @@ function SourcesRoute() {
     <>
       {header}
       <div className="p-[var(--tm-pad)]">
-        {mock === 'loading' ? (
+        {sourcesQuery.isPending ? (
           <div aria-busy="true" aria-label="Loading sources" className="border border-hairline">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} variant="row" />
             ))}
           </div>
+        ) : sourcesQuery.isError ? (
+          <ErrorState
+            variant="page"
+            headline="Couldn't load sources"
+            raw={'GET /api/sources failed\nprobe_id=src-1 attempt=1/3 next_retry=4s'}
+            onRetry={() => void sourcesQuery.refetch()}
+          />
         ) : sources.length === 0 ? (
           <EmptyState
             title="No sources yet"
@@ -71,8 +67,8 @@ function SourcesRoute() {
                 <SourceCard
                   key={source.id}
                   source={source}
-                  probing={probingId === source.id}
-                  onProbe={probe}
+                  probing={probeMutation.isPending && probeMutation.variables?.id === source.id}
+                  onProbe={(s) => probeMutation.mutate({ id: s.id, name: s.name })}
                   onDelete={setDeleteTarget}
                 />
               ))}
@@ -95,10 +91,7 @@ function SourcesRoute() {
         match={deleteTarget?.name ?? ''}
         actionLabel="Delete source"
         onConfirm={() => {
-          if (deleteTarget) {
-            setSources((prev) => prev.filter((s) => s.id !== deleteTarget.id))
-            notify('ok', `Deleted ${deleteTarget.name}`)
-          }
+          if (deleteTarget) deleteMutation.mutate({ id: deleteTarget.id, name: deleteTarget.name })
           setDeleteTarget(null)
         }}
       />

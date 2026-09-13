@@ -1,25 +1,31 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { LayoutGroup } from 'motion/react'
 import { IncidentRow } from '@/components/cards/IncidentRow'
 import type { SnoozeChoice } from '@/components/cards/IncidentRow'
 import { IncidentDrawer } from '@/components/overlays/IncidentDrawer'
 import { EmptyState } from '@/components/feedback/EmptyState'
+import { ErrorState } from '@/components/feedback/ErrorState'
 import { Skeleton } from '@/components/feedback/Skeleton'
 import { Segmented } from '@/components/primitives'
-import { notify } from '@/components/feedback/notify'
 import { HeaderStrip } from '@/shell/HeaderStrip'
 import { useNow } from '@/lib/clock'
 import { formatDayHeader } from '@/lib/format'
-import { getDataset, INCIDENTS } from '@/mocks'
-import type { Incident } from '@/mocks'
+import { useDatasets } from '@/features/datasets'
+import {
+  useIncidents,
+  useAckIncident,
+  useSnoozeIncident,
+  useResolveIncident,
+  useNotifyIncident,
+} from '@/features/incidents'
+import type { Incident } from '@/contracts'
 
 type FilterId = 'open' | 'resolved' | 'all'
 
 interface IncidentsSearch {
   filter: FilterId
   incident?: string
-  mock?: string
 }
 
 const FILTERS: readonly FilterId[] = ['open', 'resolved', 'all']
@@ -31,22 +37,23 @@ export const Route = createFileRoute('/_app/incidents')({
   validateSearch: (search: Record<string, unknown>): IncidentsSearch => ({
     filter: FILTERS.includes(search.filter as FilterId) ? (search.filter as FilterId) : 'open',
     incident: typeof search.incident === 'string' ? search.incident : undefined,
-    mock: typeof search.mock === 'string' ? search.mock : undefined,
   }),
 })
 
-const SNOOZE_TOAST: Record<SnoozeChoice, string> = {
-  '1h': 'Snoozed for 1h',
-  '4h': 'Snoozed for 4h',
-  tomorrow: 'Snoozed until tomorrow 09:00',
-  resolved: 'Snoozed until resolved',
-}
-
 function IncidentsRoute() {
-  const { filter, incident: incidentId, mock } = Route.useSearch()
+  const { filter, incident: incidentId } = Route.useSearch()
   const navigate = useNavigate()
-  const [incidents, setIncidents] = useState<Incident[]>(() => INCIDENTS.map((i) => ({ ...i })))
   const now = useNow()
+
+  const incidentsQuery = useIncidents(filter)
+  // The 'all' list drives the header counts + the deep-linked drawer.
+  const allQuery = useIncidents('all')
+  const datasetsQuery = useDatasets()
+
+  const ack = useAckIncident()
+  const snoozeM = useSnoozeIncident()
+  const resolveM = useResolveIncident()
+  const notifyM = useNotifyIncident()
 
   const setFilter = (next: FilterId): void => {
     void navigate({ to: '/incidents', search: { filter: next, incident: incidentId } })
@@ -58,33 +65,14 @@ function IncidentsRoute() {
     void navigate({ to: '/incidents', search: { filter, incident: undefined } })
   }
 
-  const patch = (id: string, changes: Partial<Incident>): void =>
-    setIncidents((prev) => prev.map((i) => (i.id === id ? { ...i, ...changes } : i)))
+  const incidents = useMemo(() => incidentsQuery.data ?? [], [incidentsQuery.data])
+  const all = allQuery.data ?? []
+  const datasetIds = useMemo(() => new Set((datasetsQuery.data ?? []).map((d) => d.id)), [datasetsQuery.data])
 
-  const ack = (id: string): void => {
-    patch(id, { status: 'acked', ackedBy: 'advicemicro@gmail.com' })
-    notify('ok', 'Acknowledged')
-  }
-  const snooze = (id: string, choice: SnoozeChoice): void => {
-    patch(id, { status: 'snoozed' })
-    notify('ok', SNOOZE_TOAST[choice])
-  }
-  const resolve = (id: string): void => {
-    patch(id, { status: 'resolved', resolvedAt: new Date().toISOString() })
-    notify('ok', 'Resolved — will reopen if it recurs')
-    if (incidentId === id) closeDrawer()
-  }
-  const renotify = (id: string): void => {
-    const inc = incidents.find((i) => i.id === id)
-    notify('info', `Re-sent to ${inc?.notifiedVia.join(', ') || 'notifiers'}`)
-  }
-
-  const filtered = useMemo(() => {
-    const list = incidents.filter((i) =>
-      filter === 'open' ? i.status !== 'resolved' : filter === 'resolved' ? i.status === 'resolved' : true,
-    )
-    return [...list].sort((a, b) => Date.parse(b.openedAt) - Date.parse(a.openedAt))
-  }, [incidents, filter])
+  const filtered = useMemo(
+    () => [...incidents].sort((a, b) => Date.parse(b.openedAt) - Date.parse(a.openedAt)),
+    [incidents],
+  )
 
   const groups = useMemo(() => {
     const map = new Map<number, Incident[]>()
@@ -97,12 +85,22 @@ function IncidentsRoute() {
     return [...map.entries()].sort((a, b) => b[0] - a[0])
   }, [filtered])
 
-  const openCount = incidents.filter((i) => i.status !== 'resolved').length
-  const resolvedWeek = incidents.filter(
+  const openCount = all.filter((i) => i.status !== 'resolved').length
+  const resolvedWeek = all.filter(
     (i) => i.status === 'resolved' && i.resolvedAt && now - Date.parse(i.resolvedAt) < WEEK,
   ).length
 
-  const drawerIncident = incidentId ? incidents.find((i) => i.id === incidentId) : undefined
+  const drawerIncident = incidentId ? all.find((i) => i.id === incidentId) : undefined
+
+  const snooze = (id: string, choice: SnoozeChoice): void => snoozeM.mutate({ id, choice })
+  const resolve = (id: string): void => {
+    resolveM.mutate(id)
+    if (incidentId === id) closeDrawer()
+  }
+  const renotify = (id: string): void => {
+    const inc = all.find((i) => i.id === id)
+    notifyM.mutate({ id, via: inc?.notifiedVia ?? [] })
+  }
 
   return (
     <>
@@ -123,12 +121,19 @@ function IncidentsRoute() {
       </HeaderStrip>
 
       <div className="p-[var(--tm-pad)]">
-        {mock === 'loading' ? (
+        {incidentsQuery.isPending ? (
           <div aria-busy="true" aria-label="Loading incidents" className="flex flex-col gap-2">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} variant="row" />
             ))}
           </div>
+        ) : incidentsQuery.isError ? (
+          <ErrorState
+            variant="page"
+            headline="Couldn't load incidents"
+            raw={'GET /api/incidents failed\nprobe_id=inc-1 attempt=1/3 next_retry=4s'}
+            onRetry={() => void incidentsQuery.refetch()}
+          />
         ) : filtered.length === 0 ? (
           filter === 'open' ? (
             <EmptyState
@@ -155,9 +160,9 @@ function IncidentsRoute() {
                       <IncidentRow
                         key={inc.id}
                         incident={inc}
-                        datasetDeleted={getDataset(inc.datasetId) === undefined}
+                        datasetDeleted={!datasetIds.has(inc.datasetId)}
                         onOpen={openDrawer}
-                        onAck={ack}
+                        onAck={(id) => ack.mutate(id)}
                         onSnooze={snooze}
                         onResolve={resolve}
                         onNotify={renotify}
@@ -174,8 +179,9 @@ function IncidentsRoute() {
       <IncidentDrawer
         open={incidentId !== undefined}
         incident={drawerIncident}
+        datasetDeleted={drawerIncident ? !datasetIds.has(drawerIncident.datasetId) : false}
         onClose={closeDrawer}
-        onAck={ack}
+        onAck={(id) => ack.mutate(id)}
         onSnooze={(id) => snooze(id, '1h')}
         onResolve={resolve}
         onNotify={renotify}

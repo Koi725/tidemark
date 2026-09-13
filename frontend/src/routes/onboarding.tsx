@@ -9,7 +9,7 @@ import { ErrorState } from '@/components/feedback/ErrorState'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { easeTuples, useReducedMotion } from '@/lib/motion'
 import { formatCount } from '@/lib/format'
-import { DATASETS } from '@/mocks'
+import { useDatasets } from '@/features/datasets'
 
 export const Route = createFileRoute('/onboarding')({
   component: OnboardingRoute,
@@ -38,13 +38,12 @@ const WAVE_PATH = cubicPath(WAVE_YS)
 const JAGGED_PATH = cubicPath(JAGGED_YS)
 
 const STEP_LABELS = ['Admin', 'Source', 'Datasets']
-const FOUND = DATASETS.slice(0, 8)
-
 const SCHEMES = ['postgres', 'mysql', 'clickhouse', 'trino', 'duckdb']
 
 function OnboardingRoute() {
   const navigate = useNavigate()
   const reduced = useReducedMotion()
+  const found = (useDatasets().data ?? []).slice(0, 8)
   const [step, setStep] = useState(0)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -213,12 +212,12 @@ function OnboardingRoute() {
               {step === 2 ? (
                 <>
                   <div className="flex flex-col gap-1.5">
-                    <h2 className="font-display text-h2 text-ink">Found {FOUND.length} datasets</h2>
+                    <h2 className="font-display text-h2 text-ink">Found {found.length} datasets</h2>
                     <p className="text-body-sm text-ink-muted">
-                      Found {FOUND.length} in warehouse-pg. Baselines learn over the first 24h.
+                      Found {found.length} in warehouse-pg. Baselines learn over the first 24h.
                     </p>
                   </div>
-                  {FOUND.length === 0 ? (
+                  {found.length === 0 ? (
                     <EmptyState
                       title="Nothing to discover"
                       body="The role can see the server but no tables in the allowed schemas. Check the role's grants."
@@ -226,7 +225,7 @@ function OnboardingRoute() {
                     />
                   ) : (
                     <div className="flex flex-col gap-1.5">
-                      {FOUND.slice(0, 6).map((d, i) => (
+                      {found.slice(0, 6).map((d, i) => (
                         <motion.div
                           key={d.id}
                           initial={reduced ? false : { opacity: 0, y: 6 }}
@@ -241,8 +240,8 @@ function OnboardingRoute() {
                           </span>
                         </motion.div>
                       ))}
-                      {FOUND.length > 6 ? (
-                        <span className="text-body-sm text-ink-muted">+{FOUND.length - 6} more</span>
+                      {found.length > 6 ? (
+                        <span className="text-body-sm text-ink-muted">+{found.length - 6} more</span>
                       ) : null}
                     </div>
                   )}
