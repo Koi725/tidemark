@@ -26,10 +26,11 @@ export default defineConfig([
     },
   },
   {
-    // Tests and Node config run outside the browser and use the vitest globals.
-    files: ['tests/**/*.{ts,tsx}', '**/*.test.{ts,tsx}', '*.config.{ts,js}'],
+    // Tests, e2e specs and Node config run outside the app; give them node globals
+    // (e2e page.evaluate callbacks also touch browser globals).
+    files: ['tests/**/*.{ts,tsx}', 'e2e/**/*.{ts,tsx}', '**/*.test.{ts,tsx}', '*.config.{ts,js}'],
     languageOptions: {
-      globals: { ...globals.node },
+      globals: { ...globals.node, ...globals.browser },
     },
   },
   {
