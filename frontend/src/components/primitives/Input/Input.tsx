@@ -1,18 +1,14 @@
 import { cn } from '@/lib/cn'
-import type { InputProps, InputSize } from './types'
+import type { InputProps } from './types'
 
+// Field control (§3.18): 38px tall, raised surface, hairline border → strong on
+// hover, tide on focus, alert when invalid. Disabled dims to 45% on a fainter fill.
 const BASE =
-  'tm-focusable w-full rounded-md border bg-surface text-fg placeholder:text-fg-subtle transition-colors disabled:cursor-not-allowed disabled:opacity-50'
-
-const SIZE_CLASS: Record<InputSize, string> = {
-  sm: 'h-[var(--tm-control-h-sm)] px-[var(--tm-control-pad-x)] text-xs',
-  md: 'h-[var(--tm-control-h-md)] px-[var(--tm-control-pad-x)] text-sm',
-  lg: 'h-[var(--tm-control-h-lg)] px-[var(--tm-control-pad-x)] text-base',
-}
+  'h-[38px] w-full rounded-md border bg-raised px-2.5 text-[14px] text-ink placeholder:text-ink-faint transition-[border-color] duration-fast ease-out hover:border-strong focus:border-tide disabled:cursor-not-allowed disabled:bg-fainter disabled:opacity-45'
 
 export function Input({
-  inputSize = 'md',
   invalid = false,
+  mono = false,
   className,
   ...rest
 }: InputProps): React.JSX.Element {
@@ -20,8 +16,8 @@ export function Input({
     <input
       className={cn(
         BASE,
-        SIZE_CLASS[inputSize],
-        invalid ? 'border-error' : 'border-border',
+        invalid ? 'border-alert' : 'border-hairline',
+        mono && 'font-mono',
         className,
       )}
       aria-invalid={invalid || undefined}
