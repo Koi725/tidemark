@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="tidemark">
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 32 32" role="img" aria-label="tidemark">
   <rect width="32" height="32" fill="#0f1113" />
   <g transform="translate(4 4) scale(0.75)" fill="none" stroke="#5cc2bc" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <path d="M2 16c4-6 24-6 28 0c-4 6-24 6-28 0z" />
