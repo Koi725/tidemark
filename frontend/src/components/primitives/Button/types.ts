@@ -1,12 +1,15 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
-export type ButtonVariant = 'solid' | 'outline' | 'ghost' | 'subtle'
-export type ButtonSize = 'sm' | 'md' | 'lg'
+export type ButtonVariant =
+  | 'primary'
+  | 'secondary'
+  | 'ghost'
+  | 'destructive'
+  | 'icon'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
-  size?: ButtonSize
-  /** Show a spinner and mark the control busy + disabled. */
+  /** Show a blinking ● and mark the control busy + disabled (never a spinner). */
   loading?: boolean
   /** Optional leading adornment (e.g. an icon). */
   startSlot?: ReactNode

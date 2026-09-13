@@ -1,35 +1,37 @@
+import { Corner } from '@/components/primitives/Corner'
+import type { CornerPosition } from '@/components/primitives/Corner'
 import { cn } from '@/lib/cn'
-import type { ButtonProps, ButtonSize, ButtonVariant } from './types'
+import type { ButtonProps, ButtonVariant } from './types'
 
+// Industry-derived buttons (§3.31). Focus ring is the global :focus-visible rule.
 const BASE =
-  'tm-focusable inline-flex select-none items-center justify-center gap-2 rounded-md font-medium leading-none transition-colors disabled:pointer-events-none disabled:opacity-50'
+  'tm-touch inline-flex select-none items-center justify-center gap-1.5 font-sans text-[14px] font-medium leading-none transition-[background,border-color,color] duration-fast ease-out disabled:pointer-events-none disabled:opacity-45'
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
-  solid: 'bg-accent text-fg-on-accent hover:opacity-90 active:opacity-100',
-  outline: 'border border-border bg-transparent text-fg hover:bg-surface-2',
-  ghost: 'bg-transparent text-fg hover:bg-surface-2',
-  subtle: 'bg-surface-2 text-fg hover:bg-overlay',
+  primary:
+    'relative h-9 rounded-none border border-tide bg-tide px-4 text-tide-on hover:bg-tide-hover active:bg-tide-pressed',
+  secondary:
+    'h-9 rounded-none border border-hairline bg-transparent px-3.5 text-ink hover:border-strong hover:bg-faint active:bg-fainter',
+  ghost:
+    'h-9 rounded-none px-2.5 text-ink-muted hover:bg-faint hover:text-ink active:bg-fainter',
+  destructive:
+    'relative h-9 rounded-none border border-alert bg-alert px-4 text-white hover:brightness-[.92] active:brightness-[.85]',
+  icon: 'size-9 rounded-md text-ink-muted hover:bg-faint hover:text-ink active:bg-fainter',
 }
 
-const SIZE_CLASS: Record<ButtonSize, string> = {
-  sm: 'h-[var(--tm-control-h-sm)] px-3 text-xs',
-  md: 'h-[var(--tm-control-h-md)] px-4 text-sm',
-  lg: 'h-[var(--tm-control-h-lg)] px-5 text-base',
-}
+const ALL_CORNERS: readonly CornerPosition[] = ['tl', 'tr', 'bl', 'br']
 
-function Spinner(): React.JSX.Element {
+/** The blinking ● shown in a loading button (§3.31 — never a spinner ring). */
+function Blink(): React.JSX.Element {
   return (
-    <span
-      aria-hidden="true"
-      className="inline-block size-[1em] rounded-full border-2 border-current border-r-transparent"
-      style={{ animation: 'tm-spin 0.6s linear infinite' }}
-    />
+    <span aria-hidden="true" className="animate-[tw-blink_1s_steps(1,end)_infinite]">
+      ●
+    </span>
   )
 }
 
 export function Button({
-  variant = 'solid',
-  size = 'md',
+  variant = 'secondary',
   loading = false,
   disabled,
   startSlot,
@@ -39,17 +41,20 @@ export function Button({
   children,
   ...rest
 }: ButtonProps): React.JSX.Element {
+  const framed = variant === 'primary' || variant === 'destructive'
   return (
     <button
       type={type}
-      className={cn(BASE, VARIANT_CLASS[variant], SIZE_CLASS[size], className)}
+      className={cn(BASE, VARIANT_CLASS[variant], className)}
       disabled={disabled ?? loading}
       aria-busy={loading || undefined}
       {...rest}
     >
-      {loading ? <Spinner /> : startSlot}
+      {loading ? <Blink /> : startSlot}
       {children}
       {endSlot}
+      {framed &&
+        ALL_CORNERS.map((position) => <Corner key={position} position={position} />)}
     </button>
   )
 }
