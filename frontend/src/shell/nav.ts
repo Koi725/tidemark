@@ -8,7 +8,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
-export type NavTo = '/' | '/sources' | '/incidents' | '/notifiers'
+export type NavTo = '/' | '/sources' | '/incidents' | '/notifiers' | '/status' | '/settings'
 
 export interface NavItem {
   id: string
@@ -20,14 +20,14 @@ export interface NavItem {
   badge?: number
 }
 
-/** Sidebar order (§2). Status + Settings routes are not built in this phase. */
+/** Sidebar order (§2). */
 export const NAV_ITEMS: readonly NavItem[] = [
   { id: 'overview', label: 'Overview', icon: LayoutGrid, to: '/' },
   { id: 'sources', label: 'Sources', icon: Database, to: '/sources' },
   { id: 'incidents', label: 'Incidents', icon: Zap, to: '/incidents', badge: 3 },
-  { id: 'status', label: 'Status', icon: Globe },
+  { id: 'status', label: 'Status', icon: Globe, to: '/status' },
   { id: 'notifiers', label: 'Notifiers', icon: Bell, to: '/notifiers' },
-  { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'settings', label: 'Settings', icon: Settings, to: '/settings' },
 ]
 
 /** Mobile bottom-nav subset (§2): 5 items. */
