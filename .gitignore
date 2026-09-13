@@ -16,3 +16,4 @@ __pycache__
 .DS_Store
 *.local
 frontend/src/routeTree.gen.ts
+/docs/design/HANDOFF.md
