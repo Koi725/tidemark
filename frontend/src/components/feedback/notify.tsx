@@ -24,7 +24,7 @@ const TONE: Record<ToastTone, { icon: LucideIcon; color: string }> = {
 export function notify(
   tone: ToastTone,
   message: string,
-  options: { action?: NotifyAction } = {},
+  options: { action?: NotifyAction; persistent?: boolean; id?: string } = {},
 ): void {
   const spec = TONE[tone]
   const Icon = spec.icon
@@ -59,6 +59,14 @@ export function notify(
         </button>
       </div>
     ),
-    { duration: tone === 'alert' ? 8000 : 4200 },
+    {
+      id: options.id,
+      duration: options.persistent ? Infinity : tone === 'alert' ? 8000 : 4200,
+    },
   )
+}
+
+/** Dismiss a toast by id (used for the transient live-offline banner). */
+export function dismissToast(id: string): void {
+  toast.dismiss(id)
 }
