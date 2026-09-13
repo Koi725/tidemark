@@ -1,133 +1,304 @@
 /*
- * tidemark base application styles (spec §1.2 — documented defaults, see
- * docs/adr/0002-invented-design-tokens.md). Tailwind provides the reset; this
- * layer sets element defaults from tokens and the geometry the Frame/Corner
- * primitives depend on. Class prefix is `tm-`, keyframe prefix is `tm-`.
+ * tidemark theme mapping + base layer — transcription of spec §1.2.
+ *
+ * Tailwind's `@import "tailwindcss"` is pulled in by src/index.css before this
+ * file, followed by tokens.css. Two theme blocks are used:
+ *   • @theme          — static scales (fonts, spacing, radius, motion, type,
+ *                       breakpoints, keyframes). These never switch per theme, so
+ *                       plain @theme also emits real :root custom properties that
+ *                       component code can reference directly (var(--duration-fast)
+ *                       etc.), matching the spec verbatim.
+ *   • @theme inline   — colour + elevation utilities mapped onto the --tm-* theme
+ *                       vars. `inline` resolves the var() at the element, so a
+ *                       nested [data-theme] region (e.g. the /dev/tokens dual
+ *                       panels, the public status embed) themes correctly.
+ *
+ * Utility names follow the spec (canvas, ink, tide, hairline, ok, warn, …); the
+ * underlying tokens keep the --tm- prefix.
  */
 
-html {
-  font-family: var(--tm-font-sans);
-  font-size: 16px;
-  line-height: var(--tm-leading-normal);
-  color: var(--tm-fg);
-  background-color: var(--tm-bg);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-  font-synthesis: none;
-}
+@theme {
+  /* fonts */
+  --font-sans: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-body {
-  margin: 0;
-  min-height: 100svh;
-  font-size: var(--tm-text-base);
-}
+  /* spacing — Industry 0.85× density, 4px base → 3.4px step */
+  --spacing: 3.4px; /* p-1 = 3.4px, p-2 = 6.8px, p-4 = 13.6px … */
 
-::selection {
-  background-color: var(--tm-accent);
-  color: var(--tm-fg-on-accent);
-}
+  /* radius — square frames, 4px on controls */
+  --radius-none: 0px;
+  --radius-sm: 2px;
+  --radius-md: 4px; /* inputs, chips, tags */
+  --radius-lg: 7px;
+  --radius-full: 9999px;
 
-/* Numeric / tabular data uses the mono face with tabular figures. */
-.tm-mono,
-code,
-kbd,
-samp {
-  font-family: var(--tm-font-mono);
-  font-variant-numeric: tabular-nums;
-}
+  /* motion */
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.3, 1.3, 0.4, 1);
+  --ease-linear: linear;
+  --duration-instant: 80ms;
+  --duration-fast: 120ms;
+  --duration-base: 160ms;
+  --duration-slow: 200ms;
+  --duration-drawer: 240ms;
+  --duration-chart: 800ms;
+  --duration-cinematic: 1400ms;
+  --duration-tide: 7000ms;
+  --duration-stagger: 40ms;
 
-/* Condensed display face for headings and large labels. */
-.tm-display {
-  font-family: var(--tm-font-display);
-  font-weight: var(--tm-weight-semibold);
-  letter-spacing: var(--tm-tracking-tight);
-  line-height: var(--tm-leading-tight);
-}
+  /* breakpoints (mobile-first) */
+  --breakpoint-sm: 390px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1440px;
+  --breakpoint-2xl: 1920px;
 
-/* ---- Frame + Corner geometry ---------------------------------------------- */
+  /* type scale — see §1.3 */
+  --text-display: 44px;
+  --text-display--line-height: 1.02;
+  --text-h1: 28px;
+  --text-h1--line-height: 1.1;
+  --text-h2: 22px;
+  --text-h2--line-height: 1.15;
+  --text-h3: 17px;
+  --text-h3--line-height: 1.25;
+  --text-h4: 15px;
+  --text-h4--line-height: 1.3;
+  --text-body: 14px;
+  --text-body--line-height: 1.45;
+  --text-body-sm: 13px;
+  --text-body-sm--line-height: 1.45;
+  --text-caption: 12px;
+  --text-caption--line-height: 1.4;
+  --text-label: 11px;
+  --text-label--line-height: 1.2;
+  --text-metric: 26px;
+  --text-metric--line-height: 1;
+  --text-metric-lg: 30px;
+  --text-metric-lg--line-height: 1.05;
+  --text-mono: 13px;
+  --text-mono--line-height: 1.5;
+  --text-mono-sm: 12px;
+  --text-mono-sm--line-height: 1.5;
+  --text-mono-xs: 11.5px;
+  --text-mono-xs--line-height: 1.55;
 
-.tm-frame {
-  position: relative;
-}
-
-.tm-frame--sm {
-  --tm-corner-len: 8px;
-}
-.tm-frame--md {
-  --tm-corner-len: 10px;
-}
-.tm-frame--lg {
-  --tm-corner-len: 14px;
-}
-
-.tm-corner {
-  position: absolute;
-  width: var(--tm-corner-len);
-  height: var(--tm-corner-len);
-  color: var(--tm-corner-color);
-  pointer-events: none;
-}
-
-.tm-corner--tl {
-  top: var(--tm-corner-inset);
-  left: var(--tm-corner-inset);
-  border-top: var(--tm-corner-thickness) solid currentColor;
-  border-left: var(--tm-corner-thickness) solid currentColor;
-}
-.tm-corner--tr {
-  top: var(--tm-corner-inset);
-  right: var(--tm-corner-inset);
-  border-top: var(--tm-corner-thickness) solid currentColor;
-  border-right: var(--tm-corner-thickness) solid currentColor;
-}
-.tm-corner--bl {
-  bottom: var(--tm-corner-inset);
-  left: var(--tm-corner-inset);
-  border-bottom: var(--tm-corner-thickness) solid currentColor;
-  border-left: var(--tm-corner-thickness) solid currentColor;
-}
-.tm-corner--br {
-  bottom: var(--tm-corner-inset);
-  right: var(--tm-corner-inset);
-  border-bottom: var(--tm-corner-thickness) solid currentColor;
-  border-right: var(--tm-corner-thickness) solid currentColor;
-}
-
-/* ---- Focus ring ----------------------------------------------------------- */
-
-.tm-focusable:focus-visible {
-  outline: 2px solid var(--tm-ring);
-  outline-offset: 2px;
-}
-
-/* ---- Keyframes (tm- prefix) ----------------------------------------------- */
-
-@keyframes tm-spin {
-  to {
-    transform: rotate(360deg);
+  /* keyframes */
+  @keyframes tw-rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes tw-pop {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes tw-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes tw-pulse-ring {
+    0% {
+      box-shadow: 0 0 0 0 currentColor;
+    }
+    100% {
+      box-shadow: 0 0 0 9px transparent;
+    }
+  }
+  @keyframes tw-shimmer {
+    from {
+      background-position: -200% 0;
+    }
+    to {
+      background-position: 200% 0;
+    }
+  }
+  @keyframes tw-draw {
+    from {
+      stroke-dashoffset: 1000;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes tw-drawer-in {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: none;
+    }
+  }
+  @keyframes tw-sheet-in {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: none;
+    }
+  }
+  @keyframes tw-blink {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
   }
 }
 
-@keyframes tm-pulse {
-  0%,
-  100% {
-    opacity: 1;
+@theme inline {
+  /* colors — every token mapped; all resolve through the --tm- theme vars */
+  --color-canvas: var(--tm-bg-canvas);
+  --color-sunken: var(--tm-bg-sunken);
+  --color-raised: var(--tm-bg-raised);
+  --color-overlay: var(--tm-bg-overlay);
+  --color-scrim: var(--tm-bg-scrim);
+  --color-faint: var(--tm-bg-faint);
+  --color-fainter: var(--tm-bg-fainter);
+
+  --color-hairline: var(--tm-border-hairline);
+  --color-strong: var(--tm-border-strong);
+
+  --color-ink: var(--tm-text-primary);
+  --color-ink-2: var(--tm-text-secondary);
+  --color-ink-muted: var(--tm-text-muted);
+  --color-ink-faint: var(--tm-text-faint);
+  --color-ink-inverse: var(--tm-text-inverse);
+
+  --color-tide-100: var(--tm-accent-100);
+  --color-tide-200: var(--tm-accent-200);
+  --color-tide-300: var(--tm-accent-300);
+  --color-tide-400: var(--tm-accent-400);
+  --color-tide-500: var(--tm-accent-500);
+  --color-tide-600: var(--tm-accent-600);
+  --color-tide-700: var(--tm-accent-700);
+  --color-tide-800: var(--tm-accent-800);
+  --color-tide-900: var(--tm-accent-900);
+  --color-tide: var(--tm-accent);
+  --color-tide-hover: var(--tm-accent-hover);
+  --color-tide-pressed: var(--tm-accent-pressed);
+  --color-tide-on: var(--tm-accent-on);
+
+  --color-ok: var(--tm-ok-fg);
+  --color-ok-bg: var(--tm-ok-bg);
+  --color-ok-border: var(--tm-ok-border);
+  --color-ok-subtle: var(--tm-ok-subtle);
+  --color-warn: var(--tm-warn-fg);
+  --color-warn-bg: var(--tm-warn-bg);
+  --color-warn-border: var(--tm-warn-border);
+  --color-warn-subtle: var(--tm-warn-subtle);
+  --color-alert: var(--tm-alert-fg);
+  --color-alert-bg: var(--tm-alert-bg);
+  --color-alert-border: var(--tm-alert-border);
+  --color-alert-subtle: var(--tm-alert-subtle);
+  --color-unknown: var(--tm-unknown-fg);
+  --color-unknown-bg: var(--tm-unknown-bg);
+  --color-unknown-border: var(--tm-unknown-border);
+  --color-unknown-subtle: var(--tm-unknown-subtle);
+  --color-paused: var(--tm-paused-fg);
+  --color-paused-border: var(--tm-paused-border);
+
+  --color-neutral-100: var(--tm-neutral-100);
+  --color-neutral-200: var(--tm-neutral-200);
+  --color-neutral-300: var(--tm-neutral-300);
+  --color-neutral-400: var(--tm-neutral-400);
+  --color-neutral-500: var(--tm-neutral-500);
+  --color-neutral-600: var(--tm-neutral-600);
+  --color-neutral-700: var(--tm-neutral-700);
+  --color-neutral-800: var(--tm-neutral-800);
+  --color-neutral-900: var(--tm-neutral-900);
+
+  --color-ring: var(--tm-ring);
+
+  /* elevation */
+  --shadow-sm: var(--tm-shadow-sm);
+  --shadow-md: var(--tm-shadow-md);
+  --shadow-lg: var(--tm-shadow-lg);
+}
+
+/* global base (§1.2) */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
   }
-  50% {
+  body {
+    background: var(--tm-bg-canvas);
+    color: var(--tm-text-primary);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.45;
+    font-variant-numeric: tabular-nums; /* tabular numerals EVERYWHERE */
+  }
+  * {
+    font-variant-numeric: tabular-nums;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+  a {
+    color: var(--tm-accent);
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--tm-accent-hover);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  :focus-visible {
+    outline: var(--tm-ring-width) solid var(--tm-ring);
+    outline-offset: var(--tm-ring-offset);
+  }
+  ::selection {
+    background: var(--tm-accent-subtle, rgba(92, 194, 188, 0.25));
+  }
+  [disabled],
+  .is-disabled {
     opacity: 0.45;
+    pointer-events: none;
   }
-}
-
-/* ---- Reduced motion ------------------------------------------------------- */
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
+  /*
+   * ≥44px hit area on touch (§3 conventions): expand via min-size on coarse
+   * pointers only, so visual density is preserved on mouse/trackpad devices.
+   */
+  @media (pointer: coarse) {
+    .tm-touch {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+    }
   }
 }
