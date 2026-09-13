@@ -1,0 +1,171 @@
+import type { Incident } from './types'
+
+const NOW = Date.now()
+const iso = (secondsAgo: number): string => new Date(NOW - secondsAgo * 1000).toISOString()
+
+const H = 3600
+const D = 86400
+
+/**
+ * Incident fixtures spanning every status (open / acked / snoozed / resolved),
+ * across several days for the day-group headers, plus one incident on a dataset
+ * that is no longer monitored (datasetId not present in DATASETS).
+ */
+export const INCIDENTS: readonly Incident[] = [
+  {
+    id: 'inc-1',
+    datasetId: 'ds-0',
+    datasetKey: 'public.orders',
+    sourceName: 'warehouse-pg',
+    severity: 'alert',
+    title: 'No rows for 1h 34m',
+    check: 'freshness',
+    openedAt: iso(1.6 * H),
+    resolvedAt: null,
+    status: 'open',
+    snoozedUntil: null,
+    ackedBy: null,
+    notifiedVia: ['slack', 'ntfy'],
+    evidence: [
+      { label: 'Last row', before: '14:02', after: '—' },
+      { label: 'Expected every', before: '5m', after: 'exceeded' },
+      { label: 'Rows · 1h', before: '1,204', after: '0' },
+    ],
+    timeline: [
+      { at: iso(1.6 * H), kind: 'opened', text: 'Freshness exceeded alert threshold (30m).' },
+      { at: iso(1.6 * H - 20), kind: 'notified', text: 'Notified slack, ntfy.' },
+    ],
+    raw: 'freshness check failed: no rows since 2026-09-13T14:02:11Z\nendpoint=pg.internal:5432 db=warehouse\nprobe_id=pg-orders-8842 attempt=3/3 next_retry=30s',
+  },
+  {
+    id: 'inc-2',
+    datasetId: 'ds-1',
+    datasetKey: 'public.payment_settlements',
+    sourceName: 'warehouse-pg',
+    severity: 'alert',
+    title: 'Volume −98% vs baseline',
+    check: 'volume',
+    openedAt: iso(2.4 * H),
+    resolvedAt: null,
+    status: 'acked',
+    snoozedUntil: null,
+    ackedBy: 'advicemicro@gmail.com',
+    notifiedVia: ['slack'],
+    evidence: [
+      { label: 'Rows · 1h', before: '842', after: '12' },
+      { label: 'Baseline μ', before: '812 ±96', after: '12' },
+    ],
+    timeline: [
+      { at: iso(2.4 * H), kind: 'opened', text: 'Volume fell below the −2σ band.' },
+      { at: iso(2.4 * H - 30), kind: 'notified', text: 'Notified slack.' },
+      { at: iso(1.1 * H), kind: 'acked', text: 'Acknowledged by advicemicro@gmail.com.' },
+    ],
+    raw: 'volume check: 12 rows in window, baseline mean 812 sd 96 (z=-8.3)\nendpoint=pg.internal:5432\nprobe_id=pg-pay-2201 attempt=1/3 next_retry=300s',
+  },
+  {
+    id: 'inc-3',
+    datasetId: 'ds-14',
+    datasetKey: 'payments.transactions.settlement.reconciliation.events',
+    sourceName: 'events-redpanda',
+    severity: 'warn',
+    title: 'Consumer lag above 10k',
+    check: 'kafka lag',
+    openedAt: iso(5 * H),
+    resolvedAt: null,
+    status: 'snoozed',
+    snoozedUntil: iso(-1 * H),
+    ackedBy: null,
+    notifiedVia: ['slack'],
+    evidence: [{ label: 'Lag', before: '4,200', after: '12,418' }],
+    timeline: [
+      { at: iso(5 * H), kind: 'opened', text: 'Consumer lag crossed the warn threshold.' },
+      { at: iso(4.5 * H), kind: 'snoozed', text: 'Snoozed for 4h.' },
+    ],
+    raw: 'kafka lag: group=recon-worker lag=12418 threshold_warn=10000\nendpoint=redpanda.internal:9092\nprobe_id=kf-recon-771 attempt=1/3 next_retry=60s',
+  },
+  {
+    id: 'inc-4',
+    datasetId: 'ds-2',
+    datasetKey: 'public.marketing_attribution_touchpoints_normalized_v2',
+    sourceName: 'warehouse-pg',
+    severity: 'warn',
+    title: 'Schema drift: +1 column, 1 type change',
+    check: 'schema drift',
+    openedAt: iso(1 * D - 2 * H),
+    resolvedAt: null,
+    status: 'open',
+    snoozedUntil: null,
+    ackedBy: null,
+    notifiedVia: ['ntfy'],
+    evidence: [
+      { label: 'plan', before: '—', after: 'text (added)' },
+      { label: 'currency', before: 'varchar(3)', after: 'text' },
+    ],
+    timeline: [{ at: iso(1 * D - 2 * H), kind: 'opened', text: 'Schema changed on last probe.' }],
+    raw: 'schema diff: +plan(text,nullable) ~currency(varchar(3)->text)\nendpoint=pg.internal:5432\nprobe_id=pg-mkt-5510 attempt=1/3 next_retry=300s',
+  },
+  {
+    id: 'inc-5',
+    datasetId: 'ds-30',
+    datasetKey: 'mart.revenue_daily',
+    sourceName: 'analytics-ch',
+    severity: 'alert',
+    title: 'dbt run failed',
+    check: 'run status',
+    openedAt: iso(1 * D - 30 * 60),
+    resolvedAt: iso(1 * D - 90 * 60),
+    status: 'resolved',
+    snoozedUntil: null,
+    ackedBy: null,
+    notifiedVia: ['slack'],
+    evidence: [{ label: 'Run status', before: 'success', after: 'error' }],
+    timeline: [
+      { at: iso(1 * D - 30 * 60), kind: 'opened', text: 'dbt model run returned an error.' },
+      { at: iso(1 * D - 90 * 60), kind: 'resolved', text: 'Back inside thresholds · auto-resolved.' },
+    ],
+    raw: 'dbt run: model=mart.revenue_daily status=error\nCompilation Error in model revenue_daily (models/mart/revenue_daily.sql)\nprobe_id=ch-dbt-441 attempt=1/3 next_retry=—',
+  },
+  {
+    id: 'inc-6',
+    datasetId: 'ds-31',
+    datasetKey: 'mart.customer_ltv_cohorts_by_channel_and_region',
+    sourceName: 'analytics-ch',
+    severity: 'warn',
+    title: 'Null rate 4.2% on customer_id',
+    check: 'null rate',
+    openedAt: iso(2 * D),
+    resolvedAt: iso(2 * D - 3 * H),
+    status: 'resolved',
+    snoozedUntil: null,
+    ackedBy: null,
+    notifiedVia: ['slack', 'email'],
+    evidence: [{ label: 'Null rate', before: '0.1%', after: '4.2%' }],
+    timeline: [
+      { at: iso(2 * D), kind: 'opened', text: 'Null rate crossed 2%.' },
+      { at: iso(2 * D - 3 * H), kind: 'resolved', text: 'Back inside thresholds · auto-resolved.' },
+    ],
+    raw: 'null rate: column=customer_id nulls=4.2% max=2%\nendpoint=clickhouse.internal:8123\nprobe_id=ch-ltv-190 attempt=1/3 next_retry=—',
+  },
+  {
+    id: 'inc-7',
+    datasetId: 'ds-deleted',
+    datasetKey: 'public.deprecated_signups',
+    sourceName: 'warehouse-pg',
+    severity: 'warn',
+    title: 'Custom SQL check failed',
+    check: 'custom sql',
+    openedAt: iso(3 * D),
+    resolvedAt: null,
+    status: 'open',
+    snoozedUntil: null,
+    ackedBy: null,
+    notifiedVia: ['webhook'],
+    evidence: [{ label: 'expect', before: '0', after: '37' }],
+    timeline: [{ at: iso(3 * D), kind: 'opened', text: 'Custom SQL returned rows.' }],
+    raw: 'custom sql: SELECT count(*) FROM public.deprecated_signups WHERE email IS NULL -> 37 (expected 0)\nprobe_id=pg-cust-003 attempt=1/3 next_retry=300s',
+  },
+]
+
+export function getIncident(id: string): Incident | undefined {
+  return INCIDENTS.find((i) => i.id === id)
+}
