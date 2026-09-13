@@ -5,7 +5,7 @@ import { TagInput } from '@/components/forms/TagInput'
 import { cn } from '@/lib/cn'
 import { parseDuration } from '@/lib/format'
 import type { FormValues } from '@/components/forms/isSchemaComplete'
-import type { ConnectorSchema, JsonSchemaProperty } from '@/mocks'
+import type { ConnectorSchema, JsonSchemaProperty } from '@/contracts'
 
 export type { FormValues }
 

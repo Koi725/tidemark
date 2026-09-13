@@ -1,4 +1,4 @@
-import type { ConnectorSchema } from '@/mocks'
+import type { ConnectorSchema } from '@/contracts'
 
 export type FormValues = Record<string, unknown>
 
