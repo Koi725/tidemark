@@ -1,0 +1,133 @@
+/*
+ * tidemark base application styles (spec §1.2 — documented defaults, see
+ * docs/adr/0002-invented-design-tokens.md). Tailwind provides the reset; this
+ * layer sets element defaults from tokens and the geometry the Frame/Corner
+ * primitives depend on. Class prefix is `tm-`, keyframe prefix is `tm-`.
+ */
+
+html {
+  font-family: var(--tm-font-sans);
+  font-size: 16px;
+  line-height: var(--tm-leading-normal);
+  color: var(--tm-fg);
+  background-color: var(--tm-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-synthesis: none;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  font-size: var(--tm-text-base);
+}
+
+::selection {
+  background-color: var(--tm-accent);
+  color: var(--tm-fg-on-accent);
+}
+
+/* Numeric / tabular data uses the mono face with tabular figures. */
+.tm-mono,
+code,
+kbd,
+samp {
+  font-family: var(--tm-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Condensed display face for headings and large labels. */
+.tm-display {
+  font-family: var(--tm-font-display);
+  font-weight: var(--tm-weight-semibold);
+  letter-spacing: var(--tm-tracking-tight);
+  line-height: var(--tm-leading-tight);
+}
+
+/* ---- Frame + Corner geometry ---------------------------------------------- */
+
+.tm-frame {
+  position: relative;
+}
+
+.tm-frame--sm {
+  --tm-corner-len: 8px;
+}
+.tm-frame--md {
+  --tm-corner-len: 10px;
+}
+.tm-frame--lg {
+  --tm-corner-len: 14px;
+}
+
+.tm-corner {
+  position: absolute;
+  width: var(--tm-corner-len);
+  height: var(--tm-corner-len);
+  color: var(--tm-corner-color);
+  pointer-events: none;
+}
+
+.tm-corner--tl {
+  top: var(--tm-corner-inset);
+  left: var(--tm-corner-inset);
+  border-top: var(--tm-corner-thickness) solid currentColor;
+  border-left: var(--tm-corner-thickness) solid currentColor;
+}
+.tm-corner--tr {
+  top: var(--tm-corner-inset);
+  right: var(--tm-corner-inset);
+  border-top: var(--tm-corner-thickness) solid currentColor;
+  border-right: var(--tm-corner-thickness) solid currentColor;
+}
+.tm-corner--bl {
+  bottom: var(--tm-corner-inset);
+  left: var(--tm-corner-inset);
+  border-bottom: var(--tm-corner-thickness) solid currentColor;
+  border-left: var(--tm-corner-thickness) solid currentColor;
+}
+.tm-corner--br {
+  bottom: var(--tm-corner-inset);
+  right: var(--tm-corner-inset);
+  border-bottom: var(--tm-corner-thickness) solid currentColor;
+  border-right: var(--tm-corner-thickness) solid currentColor;
+}
+
+/* ---- Focus ring ----------------------------------------------------------- */
+
+.tm-focusable:focus-visible {
+  outline: 2px solid var(--tm-ring);
+  outline-offset: 2px;
+}
+
+/* ---- Keyframes (tm- prefix) ----------------------------------------------- */
+
+@keyframes tm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes tm-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* ---- Reduced motion ------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
