@@ -12,15 +12,16 @@ import {
 } from '@/components/primitives'
 import type { ButtonVariant, TagVariant } from '@/components/primitives'
 import {
+  EMPTY,
   formatAge,
-  formatAgo,
   formatBytes,
   formatCount,
   formatDelta,
+  formatLag,
   formatPct,
-  formatTs,
+  formatSnapshot,
 } from '@/lib/format'
-import { DATASET_STATES, severityOrder, stateMeta } from '@/lib/state'
+import { severityOrder, stateMeta } from '@/lib/state'
 import { durations, easings } from '@/lib/motion'
 import { useDensity } from '@/providers/density'
 import { useTheme } from '@/providers/theme'
@@ -30,64 +31,98 @@ export const Route = createFileRoute('/dev/tokens')({
   component: TokensRoute,
 })
 
-/* ---- Token catalogues ------------------------------------------------------ */
+/* ---- Token catalogues (corrected §1.1 names) ------------------------------- */
 
-const SURFACE_TOKENS = ['--tm-bg', '--tm-surface', '--tm-surface-2', '--tm-overlay']
-const TEXT_TOKENS = ['--tm-fg', '--tm-fg-muted', '--tm-fg-subtle', '--tm-fg-on-accent']
-const LINE_TOKENS = ['--tm-border', '--tm-border-strong']
+const SURFACE_TOKENS = [
+  '--tm-bg-canvas',
+  '--tm-bg-sunken',
+  '--tm-bg-raised',
+  '--tm-bg-overlay',
+  '--tm-bg-faint',
+  '--tm-bg-fainter',
+]
+const TEXT_TOKENS = [
+  '--tm-text-primary',
+  '--tm-text-secondary',
+  '--tm-text-muted',
+  '--tm-text-faint',
+  '--tm-text-inverse',
+]
+const LINE_TOKENS = ['--tm-border-hairline', '--tm-border-strong']
 const ACCENT_TOKENS = [
+  '--tm-accent-100',
+  '--tm-accent-200',
+  '--tm-accent-300',
+  '--tm-accent-400',
+  '--tm-accent-500',
+  '--tm-accent-600',
+  '--tm-accent-700',
+  '--tm-accent-800',
+  '--tm-accent-900',
   '--tm-accent',
-  '--tm-accent-fg',
-  '--tm-accent-muted',
-  '--tm-accent-border',
-  '--tm-ring',
+  '--tm-accent-hover',
+  '--tm-accent-pressed',
 ]
-const STATE_COLOR_TOKENS = [
-  '--tm-state-fresh',
-  '--tm-state-stale',
-  '--tm-state-late',
-  '--tm-state-error',
-  '--tm-state-unknown',
-  '--tm-state-paused',
+const STATUS_TOKENS = [
+  '--tm-ok-fg',
+  '--tm-warn-fg',
+  '--tm-alert-fg',
+  '--tm-unknown-fg',
+  '--tm-paused-fg',
 ]
-
-const RADIUS_TOKENS = [
-  '--tm-radius-xs',
-  '--tm-radius-sm',
-  '--tm-radius-md',
-  '--tm-radius-lg',
-]
-const SPACE_TOKENS = [
-  '--tm-space-1',
-  '--tm-space-2',
-  '--tm-space-3',
-  '--tm-space-4',
-  '--tm-space-6',
-  '--tm-space-8',
-]
-const TEXT_SCALE = [
-  '--tm-text-2xs',
-  '--tm-text-xs',
-  '--tm-text-sm',
-  '--tm-text-base',
-  '--tm-text-md',
-  '--tm-text-lg',
-  '--tm-text-xl',
-  '--tm-text-2xl',
-  '--tm-text-3xl',
+const NEUTRAL_TOKENS = [
+  '--tm-neutral-100',
+  '--tm-neutral-200',
+  '--tm-neutral-300',
+  '--tm-neutral-400',
+  '--tm-neutral-500',
+  '--tm-neutral-600',
+  '--tm-neutral-700',
+  '--tm-neutral-800',
+  '--tm-neutral-900',
 ]
 
-const BUTTON_VARIANTS: readonly ButtonVariant[] = ['solid', 'outline', 'ghost', 'subtle']
-const TAG_VARIANTS: readonly TagVariant[] = ['soft', 'solid', 'outline']
+const RADIUS_TOKENS: ReadonlyArray<[string, string]> = [
+  ['none', 'var(--radius-none)'],
+  ['sm', 'var(--radius-sm)'],
+  ['md', 'var(--radius-md)'],
+  ['lg', 'var(--radius-lg)'],
+]
 
-const SAMPLE_NOW = Date.parse('2026-09-13T14:22:35Z')
+const TYPE_ROLES: ReadonlyArray<[string, string]> = [
+  ['display', 'text-display font-display'],
+  ['h1', 'text-h1 font-display'],
+  ['h2', 'text-h2 font-display'],
+  ['h3', 'text-h3 font-display'],
+  ['h4', 'text-h4 font-display'],
+  ['body', 'text-body'],
+  ['body-sm', 'text-body-sm'],
+  ['caption', 'text-caption'],
+  ['label', 'text-label font-display uppercase tracking-[.1em]'],
+  ['metric', 'text-metric font-mono'],
+  ['metric-lg', 'text-metric-lg font-mono'],
+  ['mono', 'text-mono font-mono'],
+  ['mono-sm', 'text-mono-sm font-mono'],
+  ['mono-xs', 'text-mono-xs font-mono'],
+]
 
-/* ---- Small presentational helpers ----------------------------------------- */
+const BUTTON_VARIANTS: readonly ButtonVariant[] = [
+  'primary',
+  'secondary',
+  'ghost',
+  'destructive',
+]
+const TAG_VARIANTS: readonly TagVariant[] = ['accent', 'neutral', 'outline']
+
+const SAMPLE = Date.parse('2026-09-13T14:22:35Z')
+const iso = (msAgo: number): string => new Date(SAMPLE - msAgo).toISOString()
+
+/* ---- Presentational helpers ----------------------------------------------- */
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="mb-8">
-      <h3 className="mb-3 font-display text-xs uppercase tracking-[0.14em] text-fg-subtle">
+      <h3 className="mb-3 font-display text-label uppercase tracking-[.1em] text-ink-faint">
         {title}
       </h3>
       {children}
@@ -99,10 +134,10 @@ function Swatch({ token }: { token: string }) {
   return (
     <div className="flex items-center gap-2">
       <span
-        className="size-8 shrink-0 rounded-md border border-border"
+        className="size-8 shrink-0 border border-hairline"
         style={{ backgroundColor: `var(${token})` }}
       />
-      <code className="text-2xs text-fg-muted">{token}</code>
+      <code className="font-mono text-mono-xs text-ink-muted">{token}</code>
     </div>
   )
 }
@@ -117,27 +152,15 @@ function SwatchGrid({ tokens }: { tokens: readonly string[] }) {
   )
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-wrap items-center gap-3">
-      <code className="w-40 shrink-0 text-2xs text-fg-muted">{label}</code>
-      {children}
-    </div>
-  )
-}
-
 /* ---- The per-theme panel --------------------------------------------------- */
 
 function ThemedPanel({ theme }: { theme: ResolvedTheme }) {
-  const [segment, setSegment] = useState('day')
+  const [segment, setSegment] = useState('24h')
   const [checked, setChecked] = useState(true)
 
   return (
-    <div
-      data-theme={theme}
-      className="flex-1 rounded-lg border border-border bg-bg p-5 text-fg"
-    >
-      <h2 className="mb-5 font-display text-lg capitalize">{theme} theme</h2>
+    <div data-theme={theme} className="flex-1 border border-hairline bg-canvas p-5 text-ink">
+      <h2 className="mb-5 font-display text-h2 capitalize">{theme} theme</h2>
 
       <Section title="Surfaces">
         <SwatchGrid tokens={SURFACE_TOKENS} />
@@ -148,53 +171,45 @@ function ThemedPanel({ theme }: { theme: ResolvedTheme }) {
       <Section title="Lines">
         <SwatchGrid tokens={LINE_TOKENS} />
       </Section>
-      <Section title="Accent">
+      <Section title="Accent ramp — tide">
         <SwatchGrid tokens={ACCENT_TOKENS} />
       </Section>
-      <Section title="State colours">
-        <SwatchGrid tokens={STATE_COLOR_TOKENS} />
+      <Section title="Status">
+        <SwatchGrid tokens={STATUS_TOKENS} />
+      </Section>
+      <Section title="Neutral ramp">
+        <SwatchGrid tokens={NEUTRAL_TOKENS} />
       </Section>
 
-      <Section title="Radii">
-        <div className="flex flex-wrap items-end gap-3">
-          {RADIUS_TOKENS.map((token) => (
-            <div key={token} className="flex flex-col items-center gap-1">
+      <Section title="Radius">
+        <div className="flex flex-wrap items-end gap-4">
+          {RADIUS_TOKENS.map(([name, value]) => (
+            <div key={name} className="flex flex-col items-center gap-1">
               <span
-                className="size-10 border border-border-strong bg-surface-2"
-                style={{ borderRadius: `var(${token})` }}
+                className="size-10 border border-strong bg-faint"
+                style={{ borderRadius: value }}
               />
-              <code className="text-2xs text-fg-muted">{token}</code>
+              <code className="font-mono text-mono-xs text-ink-muted">{name}</code>
             </div>
           ))}
         </div>
       </Section>
 
-      <Section title="Spacing">
-        <div className="flex flex-col gap-2">
-          {SPACE_TOKENS.map((token) => (
-            <Row key={token} label={token}>
-              <span
-                className="h-3 rounded-sm bg-accent"
-                style={{ width: `var(${token})` }}
-              />
-            </Row>
-          ))}
-        </div>
-      </Section>
-
       <Section title="Type scale">
-        <div className="flex flex-col gap-1">
-          {TEXT_SCALE.map((token) => (
-            <div key={token} className="flex items-baseline gap-3">
-              <code className="w-28 shrink-0 text-2xs text-fg-muted">{token}</code>
-              <span style={{ fontSize: `var(${token})` }}>Freshness</span>
+        <div className="flex flex-col gap-2">
+          {TYPE_ROLES.map(([name, cls]) => (
+            <div key={name} className="flex items-baseline gap-3">
+              <code className="w-24 shrink-0 font-mono text-mono-xs text-ink-muted">
+                {name}
+              </code>
+              <span className={cls}>Freshness 1,284</span>
             </div>
           ))}
         </div>
       </Section>
 
       <Section title="Motion">
-        <div className="flex flex-col gap-1 font-mono text-2xs text-fg-muted">
+        <div className="flex flex-col gap-1 font-mono text-mono-xs text-ink-muted">
           {Object.entries(durations).map(([name, value]) => (
             <span key={name}>
               duration.{name} = {value}ms
@@ -208,142 +223,115 @@ function ThemedPanel({ theme }: { theme: ResolvedTheme }) {
         </div>
       </Section>
 
-      <Section title="Type roles">
-        <div className="flex flex-col gap-2">
-          <p className="tm-display text-3xl">Display · Barlow Condensed</p>
-          <p className="font-sans text-md font-medium">Heading · Barlow Medium</p>
-          <p className="font-sans text-base">
-            Body copy uses Barlow at the 14px UI baseline for legibility.
-          </p>
-          <p className="font-mono text-sm tabular-nums">
-            Mono · 1234567890 · 09:41:07
-          </p>
-        </div>
-      </Section>
-
-      <Section title="Frame — sizes">
-        <div className="flex flex-wrap gap-4">
-          {(['sm', 'md', 'lg'] as const).map((size) => (
-            <Frame key={size} size={size} className="grid size-24 place-items-center">
-              <span className="text-xs text-fg-muted">{size}</span>
-            </Frame>
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Button — variants × sizes">
-        <div className="flex flex-col gap-3">
-          {BUTTON_VARIANTS.map((variant) => (
-            <div key={variant} className="flex flex-wrap items-center gap-3">
-              <Button variant={variant} size="sm">
-                {variant} sm
-              </Button>
-              <Button variant={variant} size="md">
-                {variant} md
-              </Button>
-              <Button variant={variant} size="lg">
-                {variant} lg
-              </Button>
-              <Button variant={variant} disabled>
-                disabled
-              </Button>
-              <Button variant={variant} loading>
-                loading
-              </Button>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Input — states">
-        <div className="grid max-w-md gap-3">
-          <Input placeholder="Default" aria-label="Default input" />
-          <Input placeholder="Invalid" invalid aria-label="Invalid input" />
-          <Input placeholder="Disabled" disabled aria-label="Disabled input" />
-          <Input inputSize="sm" placeholder="Small" aria-label="Small input" />
-          <Input inputSize="lg" placeholder="Large" aria-label="Large input" />
-        </div>
-      </Section>
-
-      <Section title="Tag — tones × variants">
-        <div className="flex flex-col gap-2">
-          {TAG_VARIANTS.map((variant) => (
-            <div key={variant} className="flex flex-wrap items-center gap-2">
-              <Tag tone="neutral" variant={variant}>
-                neutral
-              </Tag>
-              <Tag tone="accent" variant={variant}>
-                accent
-              </Tag>
-              {DATASET_STATES.map((state) => (
-                <Tag key={state} tone={state} variant={variant}>
-                  {state}
-                </Tag>
-              ))}
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Dataset states (severity order)">
+      <Section title="Dataset states (§6.1, severity order)">
         <div className="flex flex-wrap gap-2">
           {severityOrder.map((state) => {
             const meta = stateMeta[state]
             const Icon = meta.icon
             return (
-              <Tag key={state} tone={state} variant="soft">
-                <Icon size={13} aria-hidden="true" />
+              <span
+                key={state}
+                className="inline-flex items-center gap-1 rounded-md border px-[7px] py-[2px] text-[11px] font-medium tracking-[.04em]"
+                style={{
+                  color: `var(${meta.cssVar})`,
+                  background: `var(--tm-${state}-bg)`,
+                  borderColor: `var(--tm-${state}-border)`,
+                }}
+              >
+                <Icon size={12} strokeWidth={1.8} aria-hidden="true" />
                 {meta.label}
-              </Tag>
+              </span>
             )
           })}
         </div>
       </Section>
 
-      <Section title="Kbd">
-        <div className="flex items-center gap-1">
+      <Section title="Frame — elevation + interactive">
+        <div className="flex flex-wrap gap-5">
+          {(['none', 'sm', 'md', 'lg'] as const).map((elevation) => (
+            <Frame
+              key={elevation}
+              elevation={elevation}
+              className="grid size-24 place-items-center"
+            >
+              <span className="text-caption text-ink-muted">{elevation}</span>
+            </Frame>
+          ))}
+          <Frame interactive className="grid size-24 place-items-center">
+            <span className="text-caption text-ink-muted">hover</span>
+          </Frame>
+        </div>
+      </Section>
+
+      <Section title="Button — variants">
+        <div className="flex flex-wrap items-center gap-3">
+          {BUTTON_VARIANTS.map((variant) => (
+            <Button key={variant} variant={variant}>
+              {variant}
+            </Button>
+          ))}
+          <Button variant="secondary" loading>
+            Probing…
+          </Button>
+          <Button variant="secondary" disabled>
+            disabled
+          </Button>
+        </div>
+      </Section>
+
+      <Section title="Input">
+        <div className="grid max-w-md gap-3">
+          <Input placeholder="Default" aria-label="Default input" />
+          <Input mono placeholder="postgres://…" aria-label="Mono input" />
+          <Input invalid placeholder="Invalid" aria-label="Invalid input" />
+          <Input disabled placeholder="Disabled" aria-label="Disabled input" />
+        </div>
+      </Section>
+
+      <Section title="Tag / Kbd">
+        <div className="flex flex-wrap items-center gap-2">
+          {TAG_VARIANTS.map((variant) => (
+            <Tag key={variant} variant={variant}>
+              {variant}
+            </Tag>
+          ))}
           <Kbd>⌘</Kbd>
           <Kbd>K</Kbd>
-          <span className="text-xs text-fg-subtle">to search</span>
         </div>
       </Section>
 
-      <Section title="Switch">
-        <div className="flex items-center gap-4">
+      <Section title="Switch / Segmented">
+        <div className="flex flex-wrap items-center gap-5">
           <Switch checked={checked} onCheckedChange={setChecked} aria-label="Demo toggle" />
-          <Switch defaultChecked aria-label="On" />
-          <Switch aria-label="Off" />
-          <Switch disabled aria-label="Disabled" />
+          <Segmented
+            ariaLabel="Range"
+            value={segment}
+            onValueChange={setSegment}
+            options={[
+              { value: '1h', label: '1h' },
+              { value: '24h', label: '24h' },
+              { value: '7d', label: '7d' },
+              { value: '30d', label: '30d' },
+            ]}
+          />
         </div>
       </Section>
 
-      <Section title="Segmented">
-        <Segmented
-          ariaLabel="Range"
-          value={segment}
-          onValueChange={setSegment}
-          options={[
-            { value: 'hour', label: '1h' },
-            { value: 'day', label: '24h' },
-            { value: 'week', label: '7d' },
-          ]}
-        />
-      </Section>
-
-      <Section title="Formatters">
-        <div className="flex flex-col gap-1 font-mono text-xs tabular-nums text-fg-muted">
-          <span>formatAge(185000) → {formatAge(185_000)}</span>
+      <Section title="Formatters (§6)">
+        <div className="flex flex-col gap-1 font-mono text-mono-sm text-ink-muted">
+          <span>formatAge(31m 4s) → {formatAge(iso(1_864_000), { now: SAMPLE })}</span>
+          <span>formatAge(null) → {formatAge(null)}</span>
+          <span>formatCount(1284310) → {formatCount(1_284_310)}</span>
+          <span>formatCount(18.2M) → {formatCount(18_200_000)}</span>
+          <span>formatBytes(3.1MiB) → {formatBytes(3_250_585)}</span>
+          <span>formatPct(99.2 uptime) → {formatPct(99.2, { uptime: true })}</span>
           <span>
-            formatAge(185000, {'{'}maxUnits:2{'}'}) → {formatAge(185_000, { maxUnits: 2 })}
+            formatDelta(−78%) →{' '}
+            {formatDelta(-78, { format: (v) => formatPct(v) })}
           </span>
-          <span>
-            formatAgo(now-200000) → {formatAgo(SAMPLE_NOW - 200_000, { now: SAMPLE_NOW })}
-          </span>
-          <span>formatCount(1234000) → {formatCount(1_234_000)}</span>
-          <span>formatBytes(1536) → {formatBytes(1536)}</span>
-          <span>formatPct(0.042) → {formatPct(0.042)}</span>
-          <span>formatDelta(-1200) → {formatDelta(-1200)}</span>
-          <span>formatTs(now) → {formatTs(SAMPLE_NOW, { utc: true, seconds: true })}</span>
+          <span>formatLag(1.2M) → {formatLag(1_200_000)}</span>
+          <span>formatSnapshot → {formatSnapshot(SAMPLE, { utc: true })}</span>
+          <span>EMPTY → {EMPTY}</span>
         </div>
       </Section>
     </div>
@@ -357,16 +345,16 @@ function TokensRoute() {
   const { density, toggle: toggleDensity } = useDensity()
 
   return (
-    <main className="min-h-svh bg-bg px-6 py-8 text-fg">
+    <main className="min-h-svh bg-canvas px-6 py-8 text-ink">
       <header className="mx-auto mb-8 flex max-w-6xl flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="tm-display text-2xl">tidemark · tokens</h1>
-          <p className="text-sm text-fg-muted">
+          <h1 className="font-display text-h1">tidemark · tokens</h1>
+          <p className="text-body-sm text-ink-muted">
             Acceptance surface — every token, type role and primitive, both themes.
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 text-xs text-fg-muted">
+          <label className="flex items-center gap-2 text-caption text-ink-muted">
             Compact
             <Switch
               checked={density === 'compact'}
