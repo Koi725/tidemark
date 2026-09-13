@@ -34,7 +34,8 @@
   --tm-text-primary: #e6e8ea;
   --tm-text-secondary: rgba(230, 232, 234, 0.78);
   --tm-text-muted: rgba(230, 232, 234, 0.64);
-  --tm-text-faint: rgba(230, 232, 234, 0.42);
+  /* faint bumped from spec 0.42 → 0.56 to clear WCAG AA (4.5:1) on canvas */
+  --tm-text-faint: rgba(230, 232, 234, 0.56);
   --tm-text-inverse: #0f1113; /* on accent fill */
 
   /* accent — tide (dark: lighter steps are the darker inks) */
@@ -123,8 +124,9 @@
 
   --tm-text-primary: #1d1f20;
   --tm-text-secondary: rgba(29, 31, 32, 0.76);
-  --tm-text-muted: rgba(29, 31, 32, 0.58);
-  --tm-text-faint: rgba(29, 31, 32, 0.4);
+  /* muted 0.58→0.72 and faint 0.40→0.64 to clear WCAG AA (4.5:1) on canvas */
+  --tm-text-muted: rgba(29, 31, 32, 0.72);
+  --tm-text-faint: rgba(29, 31, 32, 0.64);
   --tm-text-inverse: #f2f2f3;
 
   --tm-accent-100: #e4f6f4;
@@ -136,32 +138,36 @@
   --tm-accent-700: #176a68;
   --tm-accent-800: #124c4b;
   --tm-accent-900: #0d3332;
-  --tm-accent: #1f8885; /* 4.42:1 on #f2f2f3 */
-  --tm-accent-hover: #176a68;
-  --tm-accent-pressed: #124c4b;
+  /* Darkened from spec #1f8885 so white on-accent text clears AA (4.5:1) on the
+   * primary-button / selected-chip fill; also raises tide-on-canvas contrast. */
+  --tm-accent: #167068;
+  --tm-accent-hover: #125c55;
+  --tm-accent-pressed: #0f4a45;
   --tm-accent-on: #f2f2f3;
 
-  --tm-ok-fg: #1f8f5a; /* 4.52:1 */
+  /* Status foregrounds darkened from spec so they clear AA (4.5:1) on their own
+   * subtle -bg tint (the StatusBadge), not just on the canvas. */
+  --tm-ok-fg: #157a49;
   --tm-ok-bg: #e2f4ea;
   --tm-ok-border: #96d3b2;
   --tm-ok-subtle: rgba(31, 143, 90, 0.1);
 
-  --tm-warn-fg: #a86a05; /* 4.56:1 */
+  --tm-warn-fg: #8a5a04;
   --tm-warn-bg: #fbeed3;
   --tm-warn-border: #e0bb6a;
   --tm-warn-subtle: rgba(168, 106, 5, 0.1);
 
-  --tm-alert-fg: #c8433b; /* 4.61:1 */
+  --tm-alert-fg: #b23a33;
   --tm-alert-bg: #fbe3e0;
   --tm-alert-border: #e79a94;
   --tm-alert-subtle: rgba(200, 67, 59, 0.1);
 
-  --tm-unknown-fg: #6b7075; /* 5.05:1 */
+  --tm-unknown-fg: #5b6065;
   --tm-unknown-bg: #e9eaec;
   --tm-unknown-border: #c2c5c8;
   --tm-unknown-subtle: rgba(107, 112, 117, 0.1);
 
-  --tm-paused-fg: #6b7075;
+  --tm-paused-fg: #5b6065;
   --tm-paused-bg: transparent;
   --tm-paused-border: rgba(29, 31, 32, 0.16);
   --tm-paused-subtle: transparent;
