@@ -1,0 +1,41 @@
+/*
+ * Self-hosted fonts (spec §8.1 — value defaults are documented, see
+ * docs/adr/0003-font-hosting.md).
+ *
+ * Files are served from /public/fonts with stable, unhashed names so the
+ * <link rel="preload"> hints in index.html remain valid across builds. Only the
+ * weights the design system uses are shipped: Barlow 400/500, Barlow Condensed
+ * 600, and the JetBrains Mono variable face.
+ */
+
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/barlow-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/barlow-latin-500-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/barlow-condensed-latin-600-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono Variable';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2');
+}
