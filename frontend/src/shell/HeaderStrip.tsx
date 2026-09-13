@@ -39,7 +39,7 @@ export function HeaderStrip({ title, meta, right, children }: HeaderStripProps):
       <div
         className={cn(
           'flex flex-wrap items-center gap-x-3 gap-y-1 px-[var(--tm-pad)] transition-[padding] duration-slow ease-out',
-          condensed ? 'py-2' : 'py-4',
+          condensed ? 'py-[8px]' : 'py-[16px]',
         )}
       >
         <h1
