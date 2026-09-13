@@ -1,19 +1,18 @@
 import { Item, Root } from '@radix-ui/react-toggle-group'
 import { cn } from '@/lib/cn'
-import type { SegmentedProps, SegmentedSize } from './types'
+import type { SegmentedProps } from './types'
 
-const SIZE_CLASS: Record<SegmentedSize, string> = {
-  sm: 'h-[var(--tm-control-h-sm)] px-2.5 text-xs',
-  md: 'h-[var(--tm-control-h-md)] px-3 text-sm',
-}
-
-/** A single-select segmented control built on Radix ToggleGroup. */
+/**
+ * A square single-select segmented control (§3.10): hairline frame, 34px options,
+ * 12px text, hairline dividers between options, selected fills with tide. Built on
+ * Radix ToggleGroup so arrow keys move the selection.
+ */
 export function Segmented({
   options,
   value,
   onValueChange,
-  size = 'md',
   disabled = false,
+  fill = false,
   className,
   ariaLabel,
 }: SegmentedProps): React.JSX.Element {
@@ -28,19 +27,21 @@ export function Segmented({
       disabled={disabled}
       aria-label={ariaLabel}
       className={cn(
-        'inline-flex items-center gap-1 rounded-md border border-border bg-surface-2 p-0.5',
+        'inline-flex items-stretch rounded-none border border-hairline',
+        fill && 'w-full',
         className,
       )}
     >
-      {options.map((option) => (
+      {options.map((option, index) => (
         <Item
           key={option.value}
           value={option.value}
           disabled={option.disabled}
           aria-label={option.ariaLabel}
           className={cn(
-            'tm-focusable inline-flex items-center justify-center gap-1.5 rounded-sm font-medium text-fg-muted transition-colors data-[state=on]:bg-surface data-[state=on]:text-fg disabled:opacity-50',
-            SIZE_CLASS[size],
+            'tm-touch inline-flex h-[34px] items-center justify-center gap-1.5 px-3 text-[12px] text-ink-muted transition-[background,color] duration-fast ease-out hover:bg-faint disabled:opacity-45 data-[state=on]:bg-tide data-[state=on]:text-tide-on',
+            index > 0 && 'border-l border-hairline',
+            fill && 'flex-1',
           )}
         >
           {option.icon}

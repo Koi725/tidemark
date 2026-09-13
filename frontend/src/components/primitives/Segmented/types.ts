@@ -1,7 +1,5 @@
 import type { ReactNode } from 'react'
 
-export type SegmentedSize = 'sm' | 'md'
-
 export interface SegmentedOption {
   value: string
   label: ReactNode
@@ -15,8 +13,9 @@ export interface SegmentedProps {
   options: readonly SegmentedOption[]
   value: string
   onValueChange: (value: string) => void
-  size?: SegmentedSize
   disabled?: boolean
+  /** Stretch each segment to fill the container (mobile full-width picker). */
+  fill?: boolean
   className?: string
   ariaLabel?: string
 }
