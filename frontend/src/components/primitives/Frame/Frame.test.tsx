@@ -2,28 +2,26 @@ import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { Frame } from './Frame'
 
-describe('Frame', () => {
-  it('renders four corner marks at every size', () => {
-    for (const size of ['sm', 'md', 'lg'] as const) {
-      const { container, unmount } = render(<Frame size={size} />)
-      expect(container.querySelector(`.tm-frame--${size}`)).not.toBeNull()
-      expect(container.querySelectorAll('.tm-corner')).toHaveLength(4)
-      for (const position of ['tl', 'tr', 'bl', 'br']) {
-        expect(container.querySelector(`.tm-corner--${position}`)).not.toBeNull()
-      }
-      unmount()
-    }
+// The `+` registration marks are rendered as decorative <i> elements carrying the
+// crossed-stroke before/after pseudo-classes (§3.0).
+const cornerSelector = 'i.size-\\[7px\\]'
+
+describe('Frame (§3.0)', () => {
+  it('always renders four corner registration marks', () => {
+    const { container } = render(<Frame />)
+    expect(container.querySelectorAll(cornerSelector)).toHaveLength(4)
   })
 
-  it('can hide corners', () => {
-    const { container } = render(<Frame showCorners={false} />)
-    expect(container.querySelectorAll('.tm-corner')).toHaveLength(0)
+  it('renders as a button and stays square + transparent by default', () => {
+    const { container } = render(<Frame as="button" type="button" />)
+    const el = container.querySelector('button')
+    expect(el).not.toBeNull()
+    expect(el?.className).toContain('bg-transparent')
+    expect(el?.className).not.toContain('rounded')
   })
 
-  it('renders a subset of corners', () => {
-    const { container } = render(<Frame corners={['tl', 'br']} />)
-    expect(container.querySelectorAll('.tm-corner')).toHaveLength(2)
-    expect(container.querySelector('.tm-corner--tl')).not.toBeNull()
-    expect(container.querySelector('.tm-corner--br')).not.toBeNull()
+  it('accent-fills only when asked (primary button exception)', () => {
+    const { container } = render(<Frame filled />)
+    expect(container.firstElementChild?.className).toContain('bg-tide')
   })
 })

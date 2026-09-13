@@ -1,15 +1,21 @@
 import type { ElementType, HTMLAttributes } from 'react'
-import type { CornerPosition } from '@/components/primitives/Corner'
 
-export type FrameSize = 'sm' | 'md' | 'lg'
+export type FrameAs = 'div' | 'button' | 'a' | 'aside' | 'section'
+export type FrameElevation = 'none' | 'sm' | 'md' | 'lg'
 
 export interface FrameProps extends HTMLAttributes<HTMLElement> {
-  /** Controls corner-mark length via the --tm-corner-len token. Default 'md'. */
-  size?: FrameSize
   /** Element to render. Default 'div'. */
-  as?: ElementType
-  /** Render corner marks. Default true. */
-  showCorners?: boolean
-  /** Which corners to mark. Default all four. */
-  corners?: readonly CornerPosition[]
+  as?: FrameAs | ElementType
+  /** Adds hover wash + strong border on pointer devices. */
+  interactive?: boolean
+  /** Accent fill — the primary button is the single exception to "no surface fill". */
+  filled?: boolean
+  /** Drop shadow token. Default 'none'. */
+  elevation?: FrameElevation
+  /** Anchor href when as="a". */
+  href?: string
+  /** Button type when as="button". */
+  type?: 'button' | 'submit' | 'reset'
+  /** Disabled flag when as="button". */
+  disabled?: boolean
 }
