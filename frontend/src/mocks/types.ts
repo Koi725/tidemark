@@ -207,3 +207,76 @@ export interface DiscoveredDataset {
   tsColumn: string | null
   kind?: 'table' | 'view' | 'prefix' | 'topic'
 }
+
+/* ── Status page (Screen 7) ─────────────────────────────────────────────── */
+
+export type PublicTheme = 'auto' | 'dark' | 'light'
+
+export interface StatusPageConfig {
+  title: string
+  slug: string
+  theme: PublicTheme
+  datasetIds: string[]
+  showIncidents: boolean
+  published: boolean
+  publishedAt: string | null
+}
+
+export type DayState = 'ok' | 'warn' | 'alert' | 'none'
+
+export interface StatusDay {
+  date: string
+  state: DayState
+  freshPct: number
+}
+
+export interface PublicDataset {
+  id: string
+  key: string
+  shortName: string
+  state: DatasetState
+  uptimePct: number
+  lastRowAt: string | null
+  days: StatusDay[]
+}
+
+export interface PublicIncident {
+  date: string
+  title: string
+  duration: string
+}
+
+export interface PublicStatus {
+  title: string
+  slug: string
+  theme: PublicTheme
+  updatedAt: string
+  datasets: PublicDataset[]
+  showIncidents: boolean
+  recentIncidents: PublicIncident[]
+}
+
+/* ── Settings (Screen 8) ────────────────────────────────────────────────── */
+
+export type TokenScope = 'read' | 'probe' | 'admin'
+
+export interface ApiToken {
+  id: string
+  name: string
+  prefix: string
+  scope: TokenScope
+  lastUsedAt: string | null
+  createdAt: string
+}
+
+export interface RetentionConfig {
+  rawProbes: string
+  hourlyRollups: string
+  schemaSnapshots: string
+}
+
+export interface Settings {
+  email: string
+  retention: RetentionConfig
+  egressStrict: boolean
+}
