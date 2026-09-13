@@ -1,0 +1,1 @@
+pbpaste > ~/Desktop/tidemark/docs/design/HANDOFF.md && wc -l ~/Desktop/tidemark/docs/design/HANDOFF.md
