@@ -6,7 +6,7 @@ import { SourceIcon } from '@/components/status/SourceIcon'
 import { cn } from '@/lib/cn'
 import { useNow } from '@/lib/clock'
 import { formatAgo } from '@/lib/format'
-import type { Source } from '@/mocks'
+import type { Source } from '@/contracts'
 
 export interface SourceCardProps {
   source: Source

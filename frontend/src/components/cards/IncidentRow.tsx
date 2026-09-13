@@ -11,7 +11,7 @@ import { Button, Tag } from '@/components/primitives'
 import { cn } from '@/lib/cn'
 import { useNow } from '@/lib/clock'
 import { formatAgo, formatDuration } from '@/lib/format'
-import type { Incident } from '@/mocks'
+import type { Incident } from '@/contracts'
 
 export type SnoozeChoice = '1h' | '4h' | 'tomorrow' | 'resolved'
 
@@ -153,8 +153,9 @@ export function IncidentRow({
       transition={{ duration: 0.2, ease: [0.2, 0.7, 0.2, 1] }}
       className={cn(
         'border border-hairline hover:bg-faint',
-        snoozed && 'opacity-80',
-        resolved && 'opacity-60',
+        // Resolved reads via the "resolved" tag + reduced actions; snoozed via the
+        // BellOff + label. A dim container would drop the text below AA contrast.
+        resolved && 'bg-fainter',
       )}
     >
       {/* desktop */}

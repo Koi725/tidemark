@@ -7,7 +7,7 @@ import { notify } from '@/components/feedback/notify'
 import { cn } from '@/lib/cn'
 import { useNow } from '@/lib/clock'
 import { formatAgo } from '@/lib/format'
-import type { Notifier } from '@/mocks'
+import type { Notifier } from '@/contracts'
 
 export interface NotifierCardProps {
   notifier: Notifier

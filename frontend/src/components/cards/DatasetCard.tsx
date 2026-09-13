@@ -11,7 +11,7 @@ import { cn } from '@/lib/cn'
 import { easeTuples, useReducedMotion } from '@/lib/motion'
 import { formatAge, formatDelta, formatPct } from '@/lib/format'
 import { useNow } from '@/lib/clock'
-import type { DatasetSummary } from '@/mocks'
+import type { DatasetSummary } from '@/contracts'
 
 export interface DatasetCardProps {
   dataset: DatasetSummary
@@ -68,7 +68,9 @@ export function DatasetCard({ dataset, index, animateIn }: DatasetCardProps): Re
         className={cn(
           'relative flex min-h-[var(--tm-card-min)] flex-col gap-[10px] border bg-transparent p-[var(--tm-pad)] text-left no-underline transition-[background,border-color] duration-fast ease-out hover:border-strong hover:bg-faint active:translate-y-px active:bg-fainter',
           dataset.state === 'alert' ? 'border-alert-border' : 'border-hairline',
-          paused && 'opacity-70',
+          // Paused reads via the hollow dot, PAUSED badge and note — not a dim
+          // container, which would drop the secondary text below AA contrast.
+          paused && 'bg-fainter',
         )}
       >
         <div className="flex w-full items-start gap-2">
