@@ -20,7 +20,10 @@ import { stateMeta } from '@/lib/state'
 import { useTheme } from '@/providers/theme'
 import { useDensity } from '@/providers/density'
 import { useUiStore } from '@/stores/ui'
-import { DATASETS, INCIDENTS, SOURCES, STATUS_PAGE } from '@/mocks'
+import { useDatasets } from '@/features/datasets'
+import { useSources } from '@/features/sources'
+import { useIncidents } from '@/features/incidents'
+import { useStatusPage } from '@/features/statusPage'
 
 const CORNERS: readonly CornerPosition[] = ['tl', 'tr', 'bl', 'br']
 
@@ -39,6 +42,11 @@ function PaletteBody({ onClose }: { onClose: () => void }): React.JSX.Element {
   const { density, setDensity } = useDensity()
   const [query, setQuery] = useState('')
 
+  const datasets = useDatasets().data ?? []
+  const sources = useSources().data ?? []
+  const incidents = useIncidents('all').data ?? []
+  const statusSlug = useStatusPage().data?.slug ?? 'acme'
+
   const actionsOnly = query.trimStart().startsWith('>')
   const term = (actionsOnly ? query.replace(/^\s*>/, '') : query).trim().toLowerCase()
 
@@ -48,12 +56,12 @@ function PaletteBody({ onClose }: { onClose: () => void }): React.JSX.Element {
   }
 
   const matchedDatasets =
-    !actionsOnly && term ? DATASETS.filter((d) => d.key.toLowerCase().includes(term)).slice(0, 5) : []
+    !actionsOnly && term ? datasets.filter((d) => d.key.toLowerCase().includes(term)).slice(0, 5) : []
   const matchedSources =
-    !actionsOnly && term ? SOURCES.filter((s) => s.name.toLowerCase().includes(term)).slice(0, 3) : []
+    !actionsOnly && term ? sources.filter((s) => s.name.toLowerCase().includes(term)).slice(0, 3) : []
   const matchedIncidents =
     !actionsOnly && term
-      ? INCIDENTS.filter((i) => i.title.toLowerCase().includes(term) || i.datasetKey.toLowerCase().includes(term)).slice(0, 3)
+      ? incidents.filter((i) => i.title.toLowerCase().includes(term) || i.datasetKey.toLowerCase().includes(term)).slice(0, 3)
       : []
 
   const actions = [
@@ -81,9 +89,9 @@ function PaletteBody({ onClose }: { onClose: () => void }): React.JSX.Element {
     {
       id: 'status-page',
       label: 'Open status page',
-      hint: `status.acme.dev/${STATUS_PAGE.slug}`,
+      hint: `status.acme.dev/${statusSlug}`,
       icon: <Globe size={14} strokeWidth={1.5} aria-hidden="true" />,
-      run: () => void navigate({ to: '/status/$slug', params: { slug: STATUS_PAGE.slug } }),
+      run: () => void navigate({ to: '/status/$slug', params: { slug: statusSlug } }),
     },
     {
       id: 'density',

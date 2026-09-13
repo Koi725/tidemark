@@ -13,12 +13,13 @@ import { ErrorState } from '@/components/feedback/ErrorState'
 import { StatusBadge } from '@/components/status/StatusBadge'
 import { cn } from '@/lib/cn'
 import { formatDuration, formatTime } from '@/lib/format'
-import { getDataset } from '@/mocks'
-import type { Incident } from '@/mocks'
+import type { Incident } from '@/contracts'
 
 export interface IncidentDrawerProps {
   open: boolean
   incident: Incident | undefined
+  /** Whether the incident's dataset is no longer monitored (route computes it). */
+  datasetDeleted?: boolean
   onClose: () => void
   onAck: (id: string) => void
   onSnooze: (id: string, choice: '1h') => void
@@ -39,6 +40,7 @@ const CONTENT_CLASS = cn(
 export function IncidentDrawer({
   open,
   incident,
+  datasetDeleted = false,
   onClose,
   onAck,
   onSnooze,
@@ -46,7 +48,7 @@ export function IncidentDrawer({
   onNotify,
 }: IncidentDrawerProps): React.JSX.Element {
   const resolved = incident?.status === 'resolved'
-  const deleted = incident ? getDataset(incident.datasetId) === undefined : false
+  const deleted = datasetDeleted
 
   return (
     <Root open={open} onOpenChange={(o) => (o ? undefined : onClose())}>

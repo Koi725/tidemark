@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Content, Description, Overlay, Portal, Root, Title } from '@radix-ui/react-dialog'
 import { Button, Corner, Input, Segmented } from '@/components/primitives'
 import type { CornerPosition } from '@/components/primitives'
-import type { TokenScope } from '@/mocks'
+import type { TokenScope } from '@/contracts'
 
 const CORNERS: readonly CornerPosition[] = ['tl', 'tr', 'bl', 'br']
 

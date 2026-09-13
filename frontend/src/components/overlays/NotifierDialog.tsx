@@ -6,9 +6,9 @@ import { SourceIcon } from '@/components/status/SourceIcon'
 import { SchemaDrivenForm } from '@/components/forms/SchemaDrivenForm'
 import { isSchemaComplete } from '@/components/forms/isSchemaComplete'
 import type { FormValues } from '@/components/forms/isSchemaComplete'
-import { notify } from '@/components/feedback/notify'
 import { cn } from '@/lib/cn'
-import type { ConnectorSchema, Notifier } from '@/mocks'
+import type { NotifierInput } from '@/services'
+import type { ConnectorSchema, Notifier } from '@/contracts'
 
 const CORNERS: readonly CornerPosition[] = ['tl', 'tr', 'bl', 'br']
 
@@ -77,12 +77,36 @@ export interface NotifierDialogProps {
   onOpenChange: (open: boolean) => void
   /** Present → edit mode. */
   notifier?: Notifier | null
+  onSubmit: (input: NotifierInput) => void
+  onTest: (input: NotifierInput) => void
 }
 
-function NotifierBody({ notifier, onDone }: { notifier?: Notifier | null; onDone: () => void }): React.JSX.Element {
+function firstStringValue(values: FormValues): string {
+  for (const v of Object.values(values)) if (typeof v === 'string' && v) return v
+  return ''
+}
+
+function NotifierBody({
+  notifier,
+  onDone,
+  onSubmit,
+  onTest,
+}: {
+  notifier?: Notifier | null
+  onDone: () => void
+  onSubmit: (input: NotifierInput) => void
+  onTest: (input: NotifierInput) => void
+}): React.JSX.Element {
   const initial = notifier ? NOTIFIER_TYPES.find((t) => t.code === notifier.code) ?? null : null
   const [schema, setSchema] = useState<ConnectorSchema | null>(initial)
   const [values, setValues] = useState<FormValues>({})
+
+  const buildInput = (s: ConnectorSchema): NotifierInput => ({
+    kind: s.name,
+    code: s.code,
+    name: notifier?.name ?? s.name,
+    target: notifier?.target ?? firstStringValue(values),
+  })
 
   if (!schema) {
     return (
@@ -124,11 +148,7 @@ function NotifierBody({ notifier, onDone }: { notifier?: Notifier | null; onDone
       </div>
       <SchemaDrivenForm schema={schema} values={values} onChange={setValues} />
       <div className="mt-2 flex items-center gap-2 border-t border-hairline pt-3">
-        <Button
-          variant="secondary"
-          disabled={!complete}
-          onClick={() => notify('ok', `Test delivered to ${schema.name} · 212ms`)}
-        >
+        <Button variant="secondary" disabled={!complete} onClick={() => onTest(buildInput(schema))}>
           Send test
         </Button>
         <Button
@@ -136,7 +156,7 @@ function NotifierBody({ notifier, onDone }: { notifier?: Notifier | null; onDone
           className="ml-auto"
           disabled={!complete}
           onClick={() => {
-            notify('ok', notifier ? `Saved ${notifier.name}` : `Added ${schema.name} notifier`)
+            onSubmit(buildInput(schema))
             onDone()
           }}
         >
@@ -148,7 +168,13 @@ function NotifierBody({ notifier, onDone }: { notifier?: Notifier | null; onDone
 }
 
 /** Add/Edit notifier dialog (§4 Screen 6). Type picker → SchemaDrivenForm. */
-export function NotifierDialog({ open, onOpenChange, notifier }: NotifierDialogProps): React.JSX.Element {
+export function NotifierDialog({
+  open,
+  onOpenChange,
+  notifier,
+  onSubmit,
+  onTest,
+}: NotifierDialogProps): React.JSX.Element {
   return (
     <Root open={open} onOpenChange={onOpenChange}>
       <Portal>
@@ -161,7 +187,12 @@ export function NotifierDialog({ open, onOpenChange, notifier }: NotifierDialogP
             'data-[state=open]:animate-[tw-pop_200ms_var(--ease-out)]',
           )}
         >
-          <NotifierBody notifier={notifier} onDone={() => onOpenChange(false)} />
+          <NotifierBody
+            notifier={notifier}
+            onDone={() => onOpenChange(false)}
+            onSubmit={onSubmit}
+            onTest={onTest}
+          />
           {CORNERS.map((p) => (
             <Corner key={p} position={p} />
           ))}
