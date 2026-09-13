@@ -57,7 +57,7 @@ export function SkeletonDatasetCard(): React.JSX.Element {
   return (
     <div
       aria-hidden="true"
-      className="flex min-h-[132px] flex-col gap-[10px] border border-hairline p-[var(--tm-pad)]"
+      className="flex min-h-[var(--tm-card-min)] flex-col gap-[10px] border border-hairline p-[var(--tm-pad)]"
     >
       <div className="flex items-center justify-between gap-2">
         <Skeleton variant="text" width="55%" />
