@@ -1,0 +1,1025 @@
+openapi: 3.1.0
+info:
+  title: tidemark API
+  version: 0.1.0
+  description: >
+    The contract the tidemark frontend implies (see docs/design/HANDOFF.md §4 and
+    frontend/src/contracts/*). Wire format is snake_case; the frontend crosses to
+    camelCase in its zod contracts. All timestamps are UTC ISO-8601. Every
+    authenticated endpoint uses a single bearer token; the /public/* endpoints and
+    the setup bootstrap are unauthenticated.
+
+servers:
+  - url: /
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: datasets
+  - name: sources
+  - name: checks
+  - name: incidents
+  - name: notifiers
+  - name: routes
+  - name: status-page
+  - name: settings
+  - name: tokens
+  - name: stream
+  - name: setup
+  - name: public
+
+paths:
+  /api/datasets:
+    get:
+      tags: [datasets]
+      summary: List dataset summaries (Overview grid, §4 Screen 2)
+      parameters:
+        - name: view
+          in: query
+          schema: { type: string, enum: [summary] }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DatasetSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/datasets/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [datasets]
+      summary: Dataset detail + checks + current schema (§4 Screen 4)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DatasetDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [datasets]
+      summary: Update dataset settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DatasetPatch' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DatasetDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [datasets]
+      summary: Stop monitoring (deletes probe history; the table is untouched)
+      responses:
+        '204': { description: Stopped }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/datasets/{id}/series:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - name: range
+        in: query
+        required: true
+        schema: { $ref: '#/components/schemas/TimeRange' }
+      - name: metric
+        in: query
+        required: true
+        schema: { type: string, enum: [freshness, rows] }
+    get:
+      tags: [datasets]
+      summary: Time series for a metric over a range
+      responses:
+        '200':
+          description: rows → RowSeriesPoint[]; freshness → GapBucket[]
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: array
+                    items: { $ref: '#/components/schemas/RowSeriesPoint' }
+                  - type: array
+                    items: { $ref: '#/components/schemas/GapBucket' }
+
+  /api/datasets/{id}/schema/diff:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - { name: from, in: query, schema: { type: string } }
+      - { name: to, in: query, schema: { type: string } }
+    get:
+      tags: [datasets]
+      summary: Schema diff between two snapshots
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SchemaDiffEntry' }
+
+  /api/datasets/{id}/incidents:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [datasets]
+      summary: Incidents for a dataset
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Incident' }
+
+  /api/datasets/{id}/probe:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    post:
+      tags: [datasets]
+      summary: Queue a probe now
+      responses:
+        '202': { description: Accepted }
+
+  /api/datasets/{id}/pause:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    post:
+      tags: [datasets]
+      summary: Pause checks
+      responses:
+        '200': { description: Paused }
+
+  /api/datasets/{id}/resume:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    post:
+      tags: [datasets]
+      summary: Resume checks
+      responses:
+        '200': { description: Resumed }
+
+  /api/datasets/{id}/checks/{checkId}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - { name: checkId, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [checks]
+      summary: Enable/disable a check
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { enabled: { type: boolean } }
+      responses:
+        '204': { description: OK }
+    put:
+      tags: [checks]
+      summary: Save a check's fields
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '204': { description: OK }
+
+  /api/datasets/{id}/checks/{checkId}/run:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - { name: checkId, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [checks]
+      summary: Run a check now
+      responses:
+        '202': { description: Accepted }
+
+  /api/sources:
+    get:
+      tags: [sources]
+      summary: List connected sources (§4 Screen 3)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Source' }
+
+  /api/sources/{id}/probe:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    post:
+      tags: [sources]
+      summary: Probe a source now
+      responses:
+        '202': { description: Accepted }
+
+  /api/sources/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    delete:
+      tags: [sources]
+      summary: Delete a source and its datasets (your database is untouched)
+      responses:
+        '204': { description: Deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/sources/{id}/discover:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - { name: cursor, in: query, schema: { type: string } }
+      - { name: limit, in: query, schema: { type: integer, default: 500 } }
+      - { name: q, in: query, schema: { type: string } }
+      - { name: pattern, in: query, schema: { type: string } }
+    get:
+      tags: [sources]
+      summary: Discover datasets on a source (paged, virtualised client-side)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DiscoveredDataset' }
+
+  /api/connectors/{type}/schema:
+    parameters: [{ name: type, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [sources]
+      summary: Connector JSON Schema for the add-source form (§3.18)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectorSchema' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/incidents:
+    get:
+      tags: [incidents]
+      summary: List incidents (§4 Screen 5)
+      parameters:
+        - name: filter
+          in: query
+          schema: { type: string, enum: [open, resolved, all] }
+        - { name: cursor, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Incident' }
+
+  /api/incidents/{id}/ack:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    post:
+      tags: [incidents]
+      summary: Acknowledge
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Incident' }
+
+  /api/incidents/{id}/snooze:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    post:
+      tags: [incidents]
+      summary: Snooze
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                choice: { type: string, enum: ['1h', '4h', tomorrow, resolved] }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Incident' }
+
+  /api/incidents/{id}/resolve:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    post:
+      tags: [incidents]
+      summary: Resolve (reopens automatically if it recurs)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Incident' }
+
+  /api/incidents/{id}/notify:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    post:
+      tags: [incidents]
+      summary: Re-send notifications
+      responses:
+        '202': { description: Accepted }
+
+  /api/notifiers:
+    get:
+      tags: [notifiers]
+      summary: List notifiers (§4 Screen 6)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Notifier' }
+    post:
+      tags: [notifiers]
+      summary: Create a notifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NotifierInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notifier' }
+
+  /api/notifiers/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    put:
+      tags: [notifiers]
+      summary: Update a notifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NotifierInput' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notifier' }
+
+  /api/notifiers/{id}/test:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    post:
+      tags: [notifiers]
+      summary: Send a test delivery
+      responses:
+        '202': { description: Accepted }
+
+  /api/routes:
+    get:
+      tags: [routes]
+      summary: List routing rows (§3.22)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Route' }
+    put:
+      tags: [routes]
+      summary: Replace routing rows
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: '#/components/schemas/Route' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Route' }
+
+  /api/status-page:
+    get:
+      tags: [status-page]
+      summary: Status page config (§4 Screen 7)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StatusPageConfig' }
+    put:
+      tags: [status-page]
+      summary: Save + publish the status page
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StatusPageConfig' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StatusPageConfig' }
+
+  /api/status-page/preview:
+    post:
+      tags: [status-page]
+      summary: Live editor preview for the selected datasets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dataset_ids: { type: array, items: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PublicDataset' }
+
+  /api/settings:
+    get:
+      tags: [settings]
+      summary: Settings (§4 Screen 8)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Settings' }
+    patch:
+      tags: [settings]
+      summary: Update settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SettingsPatch' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Settings' }
+
+  /api/tokens:
+    get:
+      tags: [tokens]
+      summary: List API tokens
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ApiToken' }
+    post:
+      tags: [tokens]
+      summary: Create a token (the raw value is returned exactly once)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, scope]
+              properties:
+                name: { type: string }
+                scope: { type: string, enum: [read, probe, admin] }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CreatedToken' }
+
+  /api/tokens/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    delete:
+      tags: [tokens]
+      summary: Revoke a token
+      responses:
+        '204': { description: Revoked }
+
+  /api/stream:
+    get:
+      tags: [stream]
+      summary: Server-sent events for live updates (§5.8)
+      description: >
+        text/event-stream. Each message is a JSON object with a `type` discriminator:
+        dataset.state, dataset.probe, incident.opened, incident.resolved, source.state.
+        The client patches its query cache per event and never refetches a whole list.
+      responses:
+        '200':
+          description: An event stream
+          content:
+            text/event-stream:
+              schema: { $ref: '#/components/schemas/LiveEvent' }
+
+  /api/public/status/{slug}:
+    parameters: [{ name: slug, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [public]
+      summary: Public status page (unauthenticated, cache 30s, no cookies)
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicStatus' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/public/badge/{slug}/{dataset}.svg:
+    parameters:
+      - { name: slug, in: path, required: true, schema: { type: string } }
+      - { name: dataset, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [public]
+      summary: Shields-style status badge (unauthenticated)
+      security: []
+      responses:
+        '200':
+          description: SVG badge
+          headers:
+            Cache-Control: { schema: { type: string, example: 'max-age=60' } }
+          content:
+            image/svg+xml:
+              schema: { type: string }
+
+  /api/setup/state:
+    get:
+      tags: [setup]
+      summary: Whether the admin account is configured
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { complete: { type: boolean } }
+
+  /api/setup/admin:
+    post:
+      tags: [setup]
+      summary: Create the admin account (first run, §4 Screen 1)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 12 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { token: { type: string } }
+        '409': { description: Already set up }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid bearer token
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Problem' }
+
+  schemas:
+    Problem:
+      type: object
+      properties:
+        message: { type: string }
+
+    TimeRange:
+      type: string
+      enum: ['1h', '24h', '7d', '30d']
+
+    DatasetState:
+      type: string
+      enum: [ok, warn, alert, unknown, paused]
+
+    DatasetSummary:
+      type: object
+      required:
+        [id, key, display_name, source_id, source_name, source_type, source_code, kind,
+         tags, state, state_since, last_row_at, expected_every_seconds, warn_after_seconds,
+         alert_after_seconds, rows_window, volume_delta_pct, sparkline, check_count,
+         open_incident_count, paused, paused_at]
+      properties:
+        id: { type: string }
+        key: { type: string }
+        display_name: { type: string }
+        source_id: { type: string }
+        source_name: { type: string }
+        source_type: { type: string }
+        source_code: { type: string }
+        kind: { type: string, enum: [table, view, topic, prefix, dbt model, dag] }
+        tags: { type: array, items: { type: string } }
+        state: { $ref: '#/components/schemas/DatasetState' }
+        state_since: { type: string }
+        last_row_at: { type: [string, 'null'] }
+        expected_every_seconds: { type: [integer, 'null'] }
+        warn_after_seconds: { type: integer }
+        alert_after_seconds: { type: integer }
+        rows_window: { type: [integer, 'null'] }
+        volume_delta_pct: { type: [number, 'null'] }
+        sparkline: { type: array, items: { type: number } }
+        check_count: { type: integer }
+        open_incident_count: { type: integer }
+        paused: { type: boolean }
+        paused_at: { type: [string, 'null'] }
+
+    RowSeriesPoint:
+      type: object
+      required: [t, value, baseline_mean, baseline_sd]
+      properties:
+        t: { type: string }
+        value: { type: number }
+        baseline_mean: { type: [number, 'null'] }
+        baseline_sd: { type: [number, 'null'] }
+
+    GapBucket:
+      type: object
+      required: [t, gap_minutes]
+      properties:
+        t: { type: string }
+        gap_minutes: { type: number }
+        open_ended: { type: boolean }
+
+    SchemaDiffEntry:
+      type: object
+      required: [name, type, change, nullable]
+      properties:
+        name: { type: string }
+        type: { type: string }
+        old_type: { type: string }
+        change: { type: string, enum: [added, removed, changed, none] }
+        nullable: { type: boolean }
+        note: { type: string }
+
+    ProbeLogRow:
+      type: object
+      required: [t, result, duration_ms, rows]
+      properties:
+        t: { type: string }
+        result: { type: string, enum: [ok, warn, alert] }
+        duration_ms: { type: integer }
+        rows: { type: [integer, 'null'] }
+
+    DatasetCheck:
+      type: object
+      required: [id, name, description, enabled, state]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        enabled: { type: boolean }
+        state: { $ref: '#/components/schemas/DatasetState' }
+
+    DatasetDetail:
+      allOf:
+        - $ref: '#/components/schemas/DatasetSummary'
+        - type: object
+          required:
+            [host, owner, timestamp_column, schema, checks, freshness_buckets, rows_series,
+             warn_minutes, alert_minutes, probe_log, baseline_learning, baseline_hours_left]
+          properties:
+            host: { type: string }
+            owner: { type: string }
+            timestamp_column: { type: [string, 'null'] }
+            schema: { type: array, items: { $ref: '#/components/schemas/SchemaDiffEntry' } }
+            checks: { type: array, items: { $ref: '#/components/schemas/DatasetCheck' } }
+            freshness_buckets: { type: array, items: { $ref: '#/components/schemas/GapBucket' } }
+            rows_series: { type: array, items: { $ref: '#/components/schemas/RowSeriesPoint' } }
+            warn_minutes: { type: integer }
+            alert_minutes: { type: integer }
+            probe_log: { type: array, items: { $ref: '#/components/schemas/ProbeLogRow' } }
+            baseline_learning: { type: boolean }
+            baseline_hours_left: { type: integer }
+
+    DatasetPatch:
+      type: object
+      properties:
+        display_name: { type: string }
+        tags: { type: array, items: { type: string } }
+        timestamp_column: { type: [string, 'null'] }
+        expected_every_seconds: { type: [integer, 'null'] }
+        owner: { type: string }
+
+    Source:
+      type: object
+      required: [id, name, type, code, host, dataset_count, state, last_probe_at, read_only_verified, created_at]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        type: { type: string }
+        code: { type: string }
+        host: { type: string }
+        dataset_count: { type: integer }
+        state: { type: string, enum: [ok, warn, alert, unknown] }
+        last_probe_at: { type: [string, 'null'] }
+        read_only_verified: { type: boolean }
+        created_at: { type: string }
+
+    DiscoveredDataset:
+      type: object
+      required: [key, rows, ts_column]
+      properties:
+        key: { type: string }
+        rows: { type: [integer, 'null'] }
+        ts_column: { type: [string, 'null'] }
+        kind: { type: string, enum: [table, view, prefix, topic] }
+
+    JsonSchemaProperty:
+      type: object
+      description: One field of a connector JSON Schema (§3.18). Recursive via `properties`.
+      required: [type, title]
+      properties:
+        type: { type: string, enum: [string, integer, number, boolean, array, object] }
+        title: { type: string }
+        description: { type: string }
+        format: { type: string, enum: [uri, password] }
+        writeOnly: { type: boolean }
+        enum: { type: array, items: { type: string } }
+        items: { type: object, properties: { type: { type: string } } }
+        minimum: { type: number }
+        maximum: { type: number }
+        multipleOf: { type: number }
+        maxLength: { type: integer }
+        default: {}
+        placeholder: { type: string }
+        properties:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/JsonSchemaProperty' }
+        x-mono: { type: boolean }
+        x-span: { type: integer }
+        x-order: { type: integer }
+        x-format: { type: string, enum: [duration] }
+        x-widget: { type: string, enum: [sql] }
+
+    ConnectorSchema:
+      type: object
+      required: [type, code, name, kinds, version, required, properties]
+      properties:
+        type: { type: string }
+        code: { type: string }
+        name: { type: string }
+        kinds: { type: string }
+        version: { type: integer }
+        required: { type: array, items: { type: string } }
+        properties:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/JsonSchemaProperty' }
+
+    Incident:
+      type: object
+      required:
+        [id, dataset_id, dataset_key, source_name, severity, title, check, opened_at,
+         resolved_at, status, snoozed_until, acked_by, notified_via, evidence, timeline, raw]
+      properties:
+        id: { type: string }
+        dataset_id: { type: string }
+        dataset_key: { type: string }
+        source_name: { type: string }
+        severity: { type: string, enum: [warn, alert] }
+        title: { type: string }
+        check: { type: string }
+        opened_at: { type: string }
+        resolved_at: { type: [string, 'null'] }
+        status: { type: string, enum: [open, acked, snoozed, resolved] }
+        snoozed_until: { type: [string, 'null'] }
+        acked_by: { type: [string, 'null'] }
+        notified_via: { type: array, items: { type: string } }
+        evidence:
+          type: array
+          items:
+            type: object
+            properties:
+              label: { type: string }
+              before: { type: string }
+              after: { type: string }
+        timeline:
+          type: array
+          items:
+            type: object
+            properties:
+              at: { type: string }
+              kind: { type: string, enum: [opened, notified, acked, snoozed, resolved, note] }
+              text: { type: string }
+        raw: { type: string }
+
+    Notifier:
+      type: object
+      required: [id, kind, code, name, target, last_sent_at, events_7d, enabled]
+      properties:
+        id: { type: string }
+        kind: { type: string }
+        code: { type: string }
+        name: { type: string }
+        target: { type: string }
+        last_sent_at: { type: [string, 'null'] }
+        events_7d: { type: integer }
+        enabled: { type: boolean }
+        failing: { type: boolean }
+
+    NotifierInput:
+      type: object
+      required: [kind, code, name, target]
+      properties:
+        kind: { type: string }
+        code: { type: string }
+        name: { type: string }
+        target: { type: string }
+
+    Route:
+      type: object
+      required: [id, scope, scope_ref, scope_label, notifier_ids, min_severity]
+      properties:
+        id: { type: string }
+        scope: { type: string, enum: [global, source, tag] }
+        scope_ref: { type: [string, 'null'] }
+        scope_label: { type: string }
+        notifier_ids: { type: array, items: { type: string } }
+        min_severity: { type: string, enum: [warn, alert] }
+
+    StatusPageConfig:
+      type: object
+      required: [title, slug, theme, dataset_ids, show_incidents, published, published_at]
+      properties:
+        title: { type: string }
+        slug: { type: string }
+        theme: { type: string, enum: [auto, dark, light] }
+        dataset_ids: { type: array, items: { type: string } }
+        show_incidents: { type: boolean }
+        published: { type: boolean }
+        published_at: { type: [string, 'null'] }
+
+    StatusDay:
+      type: object
+      required: [date, state, fresh_pct]
+      properties:
+        date: { type: string }
+        state: { type: string, enum: [ok, warn, alert, none] }
+        fresh_pct: { type: number }
+
+    PublicDataset:
+      type: object
+      required: [id, key, short_name, state, uptime_pct, last_row_at, days]
+      properties:
+        id: { type: string }
+        key: { type: string }
+        short_name: { type: string }
+        state: { $ref: '#/components/schemas/DatasetState' }
+        uptime_pct: { type: number }
+        last_row_at: { type: [string, 'null'] }
+        days: { type: array, items: { $ref: '#/components/schemas/StatusDay' } }
+
+    PublicStatus:
+      type: object
+      required: [title, slug, theme, updated_at, datasets, show_incidents, recent_incidents]
+      properties:
+        title: { type: string }
+        slug: { type: string }
+        theme: { type: string, enum: [auto, dark, light] }
+        updated_at: { type: string }
+        datasets: { type: array, items: { $ref: '#/components/schemas/PublicDataset' } }
+        show_incidents: { type: boolean }
+        recent_incidents:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string }
+              title: { type: string }
+              duration: { type: string }
+
+    Settings:
+      type: object
+      required: [email, retention, egress_strict]
+      properties:
+        email: { type: string }
+        egress_strict: { type: boolean }
+        retention:
+          type: object
+          required: [raw_probes, hourly_rollups, schema_snapshots]
+          properties:
+            raw_probes: { type: string }
+            hourly_rollups: { type: string }
+            schema_snapshots: { type: string }
+
+    SettingsPatch:
+      type: object
+      properties:
+        email: { type: string }
+        egress_strict: { type: boolean }
+        retention:
+          type: object
+          properties:
+            raw_probes: { type: string }
+            hourly_rollups: { type: string }
+            schema_snapshots: { type: string }
+
+    ApiToken:
+      type: object
+      required: [id, name, prefix, scope, last_used_at, created_at]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        prefix: { type: string }
+        scope: { type: string, enum: [read, probe, admin] }
+        last_used_at: { type: [string, 'null'] }
+        created_at: { type: string }
+
+    CreatedToken:
+      type: object
+      required: [token, record]
+      properties:
+        token: { type: string }
+        record: { $ref: '#/components/schemas/ApiToken' }
+
+    LiveEvent:
+      oneOf:
+        - type: object
+          required: [type, id, state, state_since]
+          properties:
+            type: { type: string, const: dataset.state }
+            id: { type: string }
+            state: { $ref: '#/components/schemas/DatasetState' }
+            state_since: { type: string }
+        - type: object
+          required: [type, id, last_row_at]
+          properties:
+            type: { type: string, const: dataset.probe }
+            id: { type: string }
+            last_row_at: { type: string }
+        - type: object
+          required: [type, incident]
+          properties:
+            type: { type: string, const: incident.opened }
+            incident: { $ref: '#/components/schemas/Incident' }
+        - type: object
+          required: [type, id, resolved_at]
+          properties:
+            type: { type: string, const: incident.resolved }
+            id: { type: string }
+            resolved_at: { type: string }
+        - type: object
+          required: [type, id, state]
+          properties:
+            type: { type: string, const: source.state }
+            id: { type: string }
+            state: { type: string, enum: [ok, warn, alert, unknown] }
