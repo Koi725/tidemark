@@ -1,54 +1,39 @@
 /*
  * The single application ticker (spec §3.3).
  *
- * One shared clock drives every relative-time display so the whole UI updates on
- * the same frame. Behaviour:
- *  - 1s cadence while the tab is visible and something is subscribed;
- *  - a downshift cadence: after 60s continuously running it slows to 5s, and
- *    after 5 min to 30s, to avoid needless churn on long-lived idle screens;
- *  - visibilitychange pause: ticking stops entirely while the tab is hidden and
- *    resets to the 1s cadence (with an immediate tick) when it becomes visible;
- *  - it idles (no timer) whenever there are no subscribers.
- *
- * Cadence values are documented defaults — see
- * docs/adr/0004-format-and-state-rules.md.
+ * One shared clock drives every relative-time display. Per §3.3 the cadence is a
+ * flat 1000ms setInterval; the per-pill downshift (recompute every 10th / 60th
+ * tick as the age grows) lives in FreshnessPill, not here. Behaviour:
+ *   - 1s cadence while the tab is visible and something is subscribed;
+ *   - the interval is paused entirely while document.hidden, and emits one
+ *     immediate tick on visibilitychange when the tab becomes visible again;
+ *   - it idles (no timer) whenever there are no subscribers.
  */
 
 import { useSyncExternalStore } from 'react'
 
-export interface CadenceStep {
-  /** Apply this interval once elapsed run-time reaches `after` ms. */
-  after: number
-  /** Tick interval in ms. */
-  interval: number
-}
-
-export const DEFAULT_CADENCE: readonly CadenceStep[] = [
-  { after: 0, interval: 1000 },
-  { after: 60_000, interval: 5000 },
-  { after: 300_000, interval: 30_000 },
-]
+const TICK_MS = 1000
 
 type Listener = (now: number) => void
 
 export interface ClockOptions {
-  cadence?: readonly CadenceStep[]
+  /** Tick interval in ms. Default 1000 (§3.3). */
+  interval?: number
   /** Clock source; overridable for tests. */
   now?: () => number
 }
 
 export class Clock {
   private readonly listeners = new Set<Listener>()
-  private readonly cadence: readonly CadenceStep[]
+  private readonly interval: number
   private readonly nowFn: () => number
   private readonly onVisibility: () => void
-  private timer: ReturnType<typeof setTimeout> | null = null
-  private startedAt = 0
+  private timer: ReturnType<typeof setInterval> | null = null
   private current: number
 
   constructor(options: ClockOptions = {}) {
     this.nowFn = options.now ?? (() => Date.now())
-    this.cadence = options.cadence ?? DEFAULT_CADENCE
+    this.interval = options.interval ?? TICK_MS
     this.current = this.nowFn()
     this.onVisibility = () => this.handleVisibility()
   }
@@ -70,26 +55,16 @@ export class Clock {
     return typeof document !== 'undefined' && document.visibilityState === 'hidden'
   }
 
-  private intervalFor(elapsed: number): number {
-    let interval = this.cadence[0]?.interval ?? 1000
-    for (const step of this.cadence) {
-      if (elapsed >= step.after) interval = step.interval
-    }
-    return interval
-  }
-
   private start(): void {
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', this.onVisibility)
     }
-    if (this.isHidden()) return
-    this.startedAt = this.nowFn()
-    this.schedule()
+    if (!this.isHidden()) this.run()
   }
 
   private stop(): void {
     if (this.timer !== null) {
-      clearTimeout(this.timer)
+      clearInterval(this.timer)
       this.timer = null
     }
     if (typeof document !== 'undefined') {
@@ -97,13 +72,9 @@ export class Clock {
     }
   }
 
-  private schedule(): void {
-    const elapsed = this.nowFn() - this.startedAt
-    const interval = this.intervalFor(elapsed)
-    this.timer = setTimeout(() => {
-      this.tick()
-      this.schedule()
-    }, interval)
+  private run(): void {
+    if (this.timer !== null) return
+    this.timer = setInterval(() => this.tick(), this.interval)
   }
 
   private tick(): void {
@@ -114,16 +85,15 @@ export class Clock {
   private handleVisibility(): void {
     if (this.isHidden()) {
       if (this.timer !== null) {
-        clearTimeout(this.timer)
+        clearInterval(this.timer)
         this.timer = null
       }
       return
     }
-    // Became visible: reset to the fast cadence and emit immediately.
+    // Became visible: emit one immediate tick, then resume the interval.
     if (this.listeners.size > 0 && this.timer === null) {
-      this.startedAt = this.nowFn()
       this.tick()
-      this.schedule()
+      this.run()
     }
   }
 }
