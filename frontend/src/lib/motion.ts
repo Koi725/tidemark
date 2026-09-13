@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { useUiStore } from '@/stores/ui'
 
 /** Durations in milliseconds (§1.6). */
 export const durations = {
@@ -47,20 +48,25 @@ export function prefersReducedMotion(): boolean {
   return window.matchMedia(REDUCE_QUERY).matches
 }
 
-/** Subscribe to the reduced-motion preference and re-render on change. */
+/**
+ * Subscribe to the reduced-motion preference and re-render on change. Returns true
+ * when the OS prefers reduced motion OR the user set the manual override in
+ * Settings (§8.4 Appearance).
+ */
 export function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(prefersReducedMotion)
+  const override = useUiStore((s) => s.reduceMotion)
+  const [system, setSystem] = useState(prefersReducedMotion)
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
       return
     }
     const mq = window.matchMedia(REDUCE_QUERY)
-    const onChange = (): void => setReduced(mq.matches)
+    const onChange = (): void => setSystem(mq.matches)
     onChange()
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)
   }, [])
 
-  return reduced
+  return override || system
 }
