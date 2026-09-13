@@ -1,5 +1,5 @@
 import { Segmented } from '@/components/primitives'
-import type { TimeRange } from '@/mocks'
+import type { TimeRange } from '@/contracts'
 
 const OPTIONS = [
   { value: '1h', label: '1h' },

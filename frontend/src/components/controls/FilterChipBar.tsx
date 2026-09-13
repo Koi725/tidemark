@@ -44,7 +44,8 @@ export function FilterChipBar({
             )}
           >
             {chip.label}
-            <span className="opacity-60">{chip.count}</span>
+            {/* Muted count, but kept AA-legible on the tide fill when selected. */}
+            <span className={selected ? 'opacity-90' : 'opacity-70'}>{chip.count}</span>
           </button>
         )
       })}
