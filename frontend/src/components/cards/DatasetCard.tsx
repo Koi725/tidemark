@@ -66,7 +66,7 @@ export function DatasetCard({ dataset, index, animateIn }: DatasetCardProps): Re
         search={{ tab: 'timeline', range: '24h' }}
         aria-label={`${dataset.key}, ${stateLabel}, last row ${formatAge(dataset.lastRowAt, { now })}`}
         className={cn(
-          'relative flex min-h-[132px] flex-col gap-[10px] border bg-transparent p-[var(--tm-pad)] text-left no-underline transition-[background,border-color] duration-fast ease-out hover:border-strong hover:bg-faint active:translate-y-px active:bg-fainter',
+          'relative flex min-h-[var(--tm-card-min)] flex-col gap-[10px] border bg-transparent p-[var(--tm-pad)] text-left no-underline transition-[background,border-color] duration-fast ease-out hover:border-strong hover:bg-faint active:translate-y-px active:bg-fainter',
           dataset.state === 'alert' ? 'border-alert-border' : 'border-hairline',
           paused && 'opacity-70',
         )}
