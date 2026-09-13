@@ -20,6 +20,7 @@ import {
   formatCount,
   formatDateTime,
 } from '@/lib/format'
+import { useUiStore } from '@/stores/ui'
 import { getDataset, getDatasetDetail } from '@/mocks'
 import type { TimeRange } from '@/mocks'
 
@@ -56,6 +57,12 @@ function DatasetDetailRoute() {
   }, [])
 
   const summary = getDataset(datasetId)
+
+  // Record this dataset in the palette's recents (§3.27 / Screen 9).
+  const pushRecent = useUiStore((s) => s.pushRecent)
+  useEffect(() => {
+    if (summary) pushRecent({ id: summary.id, key: summary.key })
+  }, [summary, pushRecent])
 
   // Deleted / unknown id (§4 edge: 404).
   if (!summary) {
