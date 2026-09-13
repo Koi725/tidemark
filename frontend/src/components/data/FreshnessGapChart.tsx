@@ -13,7 +13,7 @@ import { Frame } from '@/components/primitives'
 import { Skeleton } from '@/components/feedback/Skeleton'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { formatDateTime } from '@/lib/format'
-import type { GapBucket, TimeRange } from '@/mocks'
+import type { GapBucket, TimeRange } from '@/contracts'
 
 export interface FreshnessGapChartProps {
   buckets: GapBucket[]
@@ -68,6 +68,8 @@ export function FreshnessGapChart({
             role="img"
             aria-label={`Freshness gap over ${range}, warn at ${warnMinutes}m, alert at ${alertMinutes}m`}
           >
+            {/* Hide Recharts' unlabelled internal SVGs; the wrapper is the image. */}
+            <div aria-hidden="true">
             <ResponsiveContainer width="100%" height={140}>
               <BarChart data={buckets} margin={{ top: 6, right: 4, bottom: 0, left: 4 }} barCategoryGap={3}>
                 <defs>
@@ -94,6 +96,7 @@ export function FreshnessGapChart({
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+            </div>
           </div>
           <div className="flex justify-between font-mono text-mono-xs text-ink-muted">
             <span>−{range}</span>

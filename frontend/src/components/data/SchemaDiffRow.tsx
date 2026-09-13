@@ -1,5 +1,5 @@
 import { cn } from '@/lib/cn'
-import type { SchemaDiffEntry } from '@/mocks'
+import type { SchemaDiffEntry } from '@/contracts'
 
 export interface SchemaDiffRowProps {
   row: SchemaDiffEntry

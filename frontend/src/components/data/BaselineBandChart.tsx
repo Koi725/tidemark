@@ -13,7 +13,7 @@ import { Frame } from '@/components/primitives'
 import { Skeleton } from '@/components/feedback/Skeleton'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { formatCount, formatDateTime } from '@/lib/format'
-import type { RowSeriesPoint, TimeRange } from '@/mocks'
+import type { RowSeriesPoint, TimeRange } from '@/contracts'
 
 export interface BaselineBandChartProps {
   series: RowSeriesPoint[]
@@ -110,6 +110,9 @@ export function BaselineBandChart({
             role="img"
             aria-label={`Row count over ${range}, ${below} point${below === 1 ? '' : 's'} below the baseline band`}
           >
+            {/* Recharts' internal SVGs carry no alt text; the wrapper above is the
+                labelled image, so hide the chart internals from AT + axe. */}
+            <div aria-hidden="true">
             <ResponsiveContainer width="100%" height={140}>
               <ComposedChart data={data} margin={{ top: 6, right: 4, bottom: 0, left: 4 }}>
                 <XAxis dataKey="t" hide />
@@ -147,6 +150,7 @@ export function BaselineBandChart({
                 <Scatter dataKey="outlierAlert" fill="var(--tm-alert-fg)" isAnimationActive={animate} />
               </ComposedChart>
             </ResponsiveContainer>
+            </div>
           </div>
           <div className="flex justify-between font-mono text-mono-xs text-ink-muted">
             <span>{data[0] ? formatDateTime(data[0].t) : ''}</span>

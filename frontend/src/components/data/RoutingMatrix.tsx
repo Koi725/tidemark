@@ -13,13 +13,15 @@ import { EmptyState } from '@/components/feedback/EmptyState'
 import { Skeleton } from '@/components/feedback/Skeleton'
 import { StatusBadge } from '@/components/status/StatusBadge'
 import { cn } from '@/lib/cn'
-import type { IncidentSeverity, Notifier, Route } from '@/mocks'
+import type { IncidentSeverity, Notifier, Route } from '@/contracts'
 
 export interface RoutingMatrixProps {
   notifiers: readonly Notifier[]
   routes: readonly Route[]
   loading?: boolean
   onAddNotifier?: () => void
+  /** Persist an edit (optimistic PUT /api/routes). */
+  onChange?: (routes: Route[]) => void
 }
 
 const menuContentClass =
@@ -55,15 +57,26 @@ function SeveritySelect({
   )
 }
 
-export function RoutingMatrix({ notifiers, routes, loading = false, onAddNotifier }: RoutingMatrixProps): React.JSX.Element {
+export function RoutingMatrix({
+  notifiers,
+  routes,
+  loading = false,
+  onAddNotifier,
+  onChange,
+}: RoutingMatrixProps): React.JSX.Element {
   const [rows, setRows] = useState<Route[]>(routes.map((r) => ({ ...r, notifierIds: [...r.notifierIds] })))
 
   const globalRow = rows.find((r) => r.scope === 'global')
   const inheritedFor = (nid: string): boolean => Boolean(globalRow?.notifierIds.includes(nid))
 
+  const commit = (next: Route[]): void => {
+    setRows(next)
+    onChange?.(next)
+  }
+
   const toggle = (routeId: string, nid: string): void => {
-    setRows((prev) =>
-      prev.map((r) => {
+    commit(
+      rows.map((r) => {
         if (r.id !== routeId) return r
         const on = r.notifierIds.includes(nid)
         return { ...r, notifierIds: on ? r.notifierIds.filter((x) => x !== nid) : [...r.notifierIds, nid] }
@@ -72,12 +85,10 @@ export function RoutingMatrix({ notifiers, routes, loading = false, onAddNotifie
   }
 
   const setSeverity = (routeId: string, sev: IncidentSeverity): void =>
-    setRows((prev) => prev.map((r) => (r.id === routeId ? { ...r, minSeverity: sev } : r)))
+    commit(rows.map((r) => (r.id === routeId ? { ...r, minSeverity: sev } : r)))
 
   const resetRow = (routeId: string): void =>
-    setRows((prev) =>
-      prev.map((r) => (r.id === routeId ? { ...r, notifierIds: [...(globalRow?.notifierIds ?? [])] } : r)),
-    )
+    commit(rows.map((r) => (r.id === routeId ? { ...r, notifierIds: [...(globalRow?.notifierIds ?? [])] } : r)))
 
   if (loading) {
     return (
