@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Content, Description, Overlay, Portal, Root, Title } from '@radix-ui/react-dialog'
 import { Button, Corner } from '@/components/primitives'
 import type { CornerPosition } from '@/components/primitives'
@@ -12,14 +12,29 @@ import { SchemaDrivenForm } from '@/components/forms/SchemaDrivenForm'
 import { isSchemaComplete } from '@/components/forms/isSchemaComplete'
 import type { FormValues } from '@/components/forms/isSchemaComplete'
 import { WizardStepper } from '@/components/wizard/WizardStepper'
+import { Skeleton } from '@/components/feedback/Skeleton'
 import { notify } from '@/components/feedback/notify'
+import { useConnectorSchema, useDiscover } from '@/features/sources'
 import { cn } from '@/lib/cn'
 import { formatCount } from '@/lib/format'
-import { CONNECTORS, discoveredFor } from '@/mocks'
-import type { ConnectorSchema, DiscoveredDataset } from '@/mocks'
 
 const CORNERS: readonly CornerPosition[] = ['tl', 'tr', 'bl', 'br']
 const STEPS = ['Type', 'Configure', 'Test', 'Discover']
+
+// Type-picker metadata (presentation only, like the nav). The full JSON schema is
+// fetched per type via the connector service.
+const CONNECTOR_TYPES: ReadonlyArray<{ type: string; code: string; name: string; kinds: string }> = [
+  { type: 'postgres', code: 'PG', name: 'Postgres', kinds: 'tables · views' },
+  { type: 'mysql', code: 'MY', name: 'MySQL', kinds: 'tables' },
+  { type: 'clickhouse', code: 'CH', name: 'ClickHouse', kinds: 'tables · parts' },
+  { type: 'trino', code: 'TR', name: 'Trino', kinds: 'catalogs · tables' },
+  { type: 'duckdb', code: 'DK', name: 'DuckDB', kinds: 'file · tables' },
+  { type: 'iceberg', code: 'IC', name: 'Iceberg REST', kinds: 'snapshots' },
+  { type: 's3', code: 'S3', name: 'S3 / Garage', kinds: 'prefixes · objects' },
+  { type: 'kafka', code: 'KF', name: 'Kafka / Redpanda', kinds: 'topics · lag' },
+  { type: 'airflow', code: 'AF', name: 'Airflow', kinds: 'DAG runs' },
+  { type: 'dbt', code: 'DB', name: 'dbt', kinds: 'run results' },
+]
 
 const TEST_FOOTER: Record<string, string> = {
   kafka: 'Fetches metadata and checks the ACLs are read-only.',
@@ -31,10 +46,6 @@ export interface AddSourceWizardProps {
   onOpenChange: (open: boolean) => void
 }
 
-/**
- * All wizard state lives here so it mounts fresh each time the dialog opens
- * (Radix unmounts Content on close) — no reset-on-open effect needed.
- */
 function WizardBody({
   onDirtyChange,
   onDone,
@@ -43,25 +54,33 @@ function WizardBody({
   onDone: () => void
 }): React.JSX.Element {
   const [step, setStep] = useState(0)
-  const [connector, setConnector] = useState<ConnectorSchema | null>(null)
+  const [type, setType] = useState<string | null>(null)
   const [values, setValues] = useState<FormValues>({})
   const [testStatus, setTestStatus] = useState<TestStatus>('idle')
   const [lines, setLines] = useState<LogLine[]>([])
-  const [discovered, setDiscovered] = useState<DiscoveredDataset[]>([])
-  const [selected, setSelected] = useState<Set<string>>(new Set())
   const [attempts, setAttempts] = useState(0)
+  const [discoverEnabled, setDiscoverEnabled] = useState(false)
+  const [userSelection, setUserSelection] = useState<Set<string> | null>(null)
 
-  useEffect(() => {
-    onDirtyChange(false)
-  }, [onDirtyChange])
+  const meta = CONNECTOR_TYPES.find((c) => c.type === type) ?? null
+  const schemaQuery = useConnectorSchema(type)
+  const schema = schemaQuery.data
+  const discoverQuery = useDiscover(type, discoverEnabled)
+  const discovered = useMemo(() => discoverQuery.data ?? [], [discoverQuery.data])
+
+  const defaultSelection = useMemo(
+    () => new Set(discovered.length <= 200 ? discovered.slice(0, 8).map((d) => d.key) : []),
+    [discovered],
+  )
+  const selected = userSelection ?? defaultSelection
 
   const markDirty = (): void => onDirtyChange(true)
 
   const runTest = (): void => {
-    if (!connector) return
-    const host = String(values.host ?? values.endpoint ?? values.brokers ?? connector.name)
+    if (!type) return
+    const host = String(values.host ?? values.endpoint ?? values.brokers ?? meta?.name ?? type)
     const fail = host.toLowerCase().includes('fail')
-    const full = buildTestLines(connector.type, host || `${connector.type}.internal`, fail)
+    const full = buildTestLines(type, host || `${type}.internal`, fail)
     setAttempts((a) => a + 1)
     setLines([])
     setTestStatus('running')
@@ -75,19 +94,17 @@ function WizardBody({
   }
 
   const startDiscovery = (): void => {
-    if (!connector) return
-    const list = discoveredFor(connector.type)
-    setDiscovered(list)
-    setSelected(list.length <= 200 ? new Set(list.slice(0, 8).map((d) => d.key)) : new Set())
+    setUserSelection(null)
+    setDiscoverEnabled(true)
     setStep(3)
   }
 
   const finishMonitoring = (): void => {
-    notify('ok', `Monitoring ${formatCount(selected.size)} datasets from ${connector?.name ?? 'source'}`)
+    notify('ok', `Monitoring ${formatCount(selected.size)} datasets from ${meta?.name ?? 'source'}`)
     onDone()
   }
   const saveAnyway = (): void => {
-    notify('warn', `Saved ${connector?.name ?? 'source'} — it will show UNKNOWN until a probe succeeds.`)
+    notify('warn', `Saved ${meta?.name ?? 'source'} — it will show UNKNOWN until a probe succeeds.`)
     onDone()
   }
 
@@ -106,12 +123,12 @@ function WizardBody({
             Pick a type. The form is generated from the connector's JSON schema.
           </Description>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(110px,1fr))] gap-2 md:grid-cols-[repeat(auto-fill,minmax(130px,1fr))]">
-            {CONNECTORS.map((c) => (
+            {CONNECTOR_TYPES.map((c) => (
               <button
                 key={c.type}
                 type="button"
                 onClick={() => {
-                  setConnector(c)
+                  setType(c.type)
                   setValues({})
                   markDirty()
                   setStep(1)
@@ -127,44 +144,52 @@ function WizardBody({
         </>
       ) : null}
 
-      {step === 1 && connector ? (
+      {step === 1 && meta ? (
         <>
           <div className="flex items-center gap-2.5">
-            <SourceIcon code={connector.code} size={28} decorative />
-            <span className="text-body font-medium text-ink">{connector.name}</span>
-            <span className="text-caption text-ink-muted">schema v{connector.version}</span>
+            <SourceIcon code={meta.code} size={28} decorative />
+            <span className="text-body font-medium text-ink">{meta.name}</span>
+            {schema ? <span className="text-caption text-ink-muted">schema v{schema.version}</span> : null}
             <Button variant="ghost" className="ml-auto" onClick={() => setStep(0)}>
               Change
             </Button>
           </div>
-          <SchemaDrivenForm
-            schema={connector}
-            values={values}
-            onChange={(v) => {
-              markDirty()
-              setValues(v)
-            }}
-          />
+          {schema ? (
+            <SchemaDrivenForm
+              schema={schema}
+              values={values}
+              onChange={(v) => {
+                markDirty()
+                setValues(v)
+              }}
+            />
+          ) : (
+            <div className="flex flex-col gap-2" aria-busy="true" aria-label="Loading form">
+              <Skeleton variant="text" width="40%" />
+              <Skeleton variant="row" />
+              <Skeleton variant="row" />
+            </div>
+          )}
           <div className="mt-auto flex flex-wrap items-center gap-3 border-t border-hairline pt-3">
-            <Button variant="primary" disabled={!isSchemaComplete(connector, values)} onClick={runTest}>
+            <Button variant="primary" disabled={!schema || !isSchemaComplete(schema, values)} onClick={runTest}>
               Test connection
             </Button>
             <span className="text-caption text-ink-muted">
-              {TEST_FOOTER[connector.type] ?? 'Runs SELECT 1 and checks the role is read-only.'}
+              {TEST_FOOTER[meta.type] ?? 'Runs SELECT 1 and checks the role is read-only.'}
             </span>
           </div>
         </>
       ) : null}
 
-      {step === 2 && connector ? (
+      {step === 2 && meta ? (
         <>
-          <span className="text-body text-ink">Testing {connector.name}</span>
+          <span className="text-body text-ink">Testing {meta.name}</span>
           <ConnectionTestLog
             lines={lines}
             status={testStatus}
             rawError={
               testStatus === 'failed'
-                ? `authentication failed for role\nendpoint=${String(values.host ?? connector.type)}\nprobe_id=test-${attempts} attempt=${attempts}/3 next_retry=5s`
+                ? `authentication failed for role\nendpoint=${String(values.host ?? meta.type)}\nprobe_id=test-${attempts} attempt=${attempts}/3 next_retry=5s`
                 : undefined
             }
           />
@@ -195,7 +220,7 @@ function WizardBody({
         </>
       ) : null}
 
-      {step === 3 && connector ? (
+      {step === 3 && meta ? (
         <>
           {discovered.length > 200 ? (
             <p className="text-caption text-ink-muted">Too many to select by default — search or use a pattern.</p>
@@ -203,7 +228,7 @@ function WizardBody({
           <DiscoveryList
             discovered={discovered}
             selected={selected}
-            onSelectedChange={setSelected}
+            onSelectedChange={setUserSelection}
             onMonitor={finishMonitoring}
           />
         </>

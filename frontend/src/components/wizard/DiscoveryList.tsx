@@ -4,7 +4,7 @@ import { Search, TriangleAlert } from 'lucide-react'
 import { Button, Input } from '@/components/primitives'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { formatCount } from '@/lib/format'
-import type { DiscoveredDataset } from '@/mocks'
+import type { DiscoveredDataset } from '@/contracts'
 
 export interface DiscoveryListProps {
   discovered: DiscoveredDataset[]

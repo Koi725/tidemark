@@ -15,6 +15,7 @@ export function WizardStepper({
 }: WizardStepperProps): React.JSX.Element {
   const common = {
     role: 'progressbar' as const,
+    'aria-label': 'Progress',
     'aria-valuemin': 1,
     'aria-valuemax': steps.length,
     'aria-valuenow': current + 1,
