@@ -1,23 +1,37 @@
 /*
- * Motion constants mirroring the --tm-dur-* / --tm-ease-* tokens in
- * src/styles/tokens.css, plus a reduced-motion hook. Keep these in sync with the
- * CSS tokens by hand — they are the JS-visible copy for animation libraries.
+ * Motion constants — transcription of spec §1.6 (motion tokens → interaction
+ * mapping), plus a reduced-motion hook. These are the JS-visible copy of the CSS
+ * duration/easing tokens in app.css, for use with `motion` (Framer).
  */
 
 import { useEffect, useState } from 'react'
 
-/** Durations in milliseconds. */
+/** Durations in milliseconds (§1.6). */
 export const durations = {
   instant: 80,
-  fast: 140,
-  base: 220,
-  slow: 360,
+  fast: 120,
+  base: 160,
+  slow: 200,
+  drawer: 240,
+  chart: 800,
+  cinematic: 1400,
+  tide: 7000,
+  stagger: 40,
 } as const
 
+/** Easing curves as CSS strings (§1.2 @theme). */
 export const easings = {
-  standard: 'cubic-bezier(0.2, 0, 0, 1)',
-  emphasized: 'cubic-bezier(0.3, 0, 0, 1)',
-  exit: 'cubic-bezier(0.4, 0, 1, 1)',
+  out: 'cubic-bezier(0.2, 0.7, 0.2, 1)',
+  inOut: 'cubic-bezier(0.65, 0, 0.35, 1)',
+  spring: 'cubic-bezier(0.3, 1.3, 0.4, 1)',
+  linear: 'linear',
+} as const
+
+/** Easing curves as bezier tuples, for motion/Framer `ease` props. */
+export const easeTuples = {
+  out: [0.2, 0.7, 0.2, 1],
+  inOut: [0.65, 0, 0.35, 1],
+  spring: [0.3, 1.3, 0.4, 1],
 } as const
 
 export type DurationToken = keyof typeof durations
