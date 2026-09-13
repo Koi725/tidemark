@@ -197,10 +197,12 @@
   --tm-pad: 16px;
   --tm-gap: 14px;
   --tm-row-pad-y: 12px;
+  --tm-card-min: 132px; /* §2 min card height */
 }
 
 [data-density='compact'] {
   --tm-pad: 10px;
   --tm-gap: 8px;
   --tm-row-pad-y: 8px;
+  --tm-card-min: 116px;
 }
