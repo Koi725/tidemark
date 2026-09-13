@@ -13,11 +13,11 @@ import { cn } from '@/lib/cn'
 import { useTheme } from '@/providers/theme'
 import { useUiStore } from '@/stores/ui'
 import { NAV_ITEMS } from './nav'
-import type { NavItem } from './nav'
+import type { NavItem, NavTo } from './nav'
 
 function isActive(pathname: string, item: NavItem): boolean {
-  if (item.id !== 'overview') return false
-  return pathname === '/' || pathname.startsWith('/datasets')
+  if (item.id === 'overview') return pathname === '/' || pathname.startsWith('/datasets')
+  return item.to ? pathname.startsWith(item.to) : false
 }
 
 interface RowProps {
@@ -26,11 +26,11 @@ interface RowProps {
   active?: boolean
   badge?: number
   collapsed: boolean
-  as: 'link' | 'button'
+  to?: NavTo
   onClick?: () => void
 }
 
-function NavRow({ icon: Icon, label, active, badge, collapsed, as, onClick }: RowProps) {
+function NavRow({ icon: Icon, label, active, badge, collapsed, to, onClick }: RowProps) {
   const className = cn(
     'tm-touch flex h-[36px] items-center gap-2.5 border-l-2 px-2.5 text-body transition-[background,color] duration-fast ease-out',
     collapsed && 'justify-center px-0',
@@ -49,9 +49,9 @@ function NavRow({ icon: Icon, label, active, badge, collapsed, as, onClick }: Ro
   )
 
   const node =
-    as === 'link' ? (
+    to !== undefined ? (
       <Link
-        to="/"
+        to={to}
         aria-current={active ? 'page' : undefined}
         aria-label={label}
         className={cn(className, 'no-underline')}
@@ -93,7 +93,7 @@ export function Sidebar(): React.JSX.Element {
     <Provider delayDuration={120}>
       <aside
         className={cn(
-          'sticky top-0 hidden h-svh shrink-0 flex-col border-r border-hairline px-2.5 py-3.5 transition-[width] duration-slow ease-out lg:flex',
+          'sticky top-0 hidden h-svh shrink-0 flex-col border-r border-hairline px-[10px] py-[14px] transition-[width] duration-slow ease-out lg:flex',
           collapsed ? 'w-[56px]' : 'w-[216px]',
         )}
       >
@@ -104,7 +104,7 @@ export function Sidebar(): React.JSX.Element {
           ) : null}
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1">
+        <nav className="flex flex-1 flex-col gap-[4px]">
           {NAV_ITEMS.map((item) => (
             <NavRow
               key={item.id}
@@ -113,7 +113,7 @@ export function Sidebar(): React.JSX.Element {
               active={isActive(pathname, item)}
               badge={item.badge}
               collapsed={collapsed}
-              as={item.to ? 'link' : 'button'}
+              to={item.to}
             />
           ))}
         </nav>
@@ -123,14 +123,12 @@ export function Sidebar(): React.JSX.Element {
             icon={theme === 'dark' ? Sun : Moon}
             label={theme === 'dark' ? 'Light theme' : 'Dark theme'}
             collapsed={collapsed}
-            as="button"
             onClick={toggleTheme}
           />
           <NavRow
             icon={collapsed ? PanelLeftOpen : PanelLeftClose}
             label={collapsed ? 'Expand' : 'Collapse'}
             collapsed={collapsed}
-            as="button"
             onClick={toggle}
           />
         </div>

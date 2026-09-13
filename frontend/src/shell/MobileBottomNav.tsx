@@ -16,7 +16,12 @@ export function MobileBottomNav(): React.JSX.Element {
     >
       {items.map((item) => {
         const Icon = item.icon
-        const active = item.id === 'overview' && (pathname === '/' || pathname.startsWith('/datasets'))
+        const active =
+          item.id === 'overview'
+            ? pathname === '/' || pathname.startsWith('/datasets')
+            : item.to
+              ? pathname.startsWith(item.to)
+              : false
         const content = (
           <>
             <span className="relative">
@@ -35,7 +40,7 @@ export function MobileBottomNav(): React.JSX.Element {
           active ? 'border-tide text-ink' : 'border-transparent text-ink-muted',
         )
         return item.to ? (
-          <Link key={item.id} to="/" aria-current={active ? 'page' : undefined} className={cn(className, 'no-underline')}>
+          <Link key={item.id} to={item.to} aria-current={active ? 'page' : undefined} className={cn(className, 'no-underline')}>
             {content}
           </Link>
         ) : (
