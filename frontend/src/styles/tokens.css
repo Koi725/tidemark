@@ -1,0 +1,285 @@
+/*
+ * tidemark design tokens.
+ *
+ * NOTE (provenance): the approved spec (docs/design/HANDOFF.md §1.1/§1.2) was not
+ * present in the repository when this file was authored, so every value below is a
+ * documented default, not a transcription. See docs/adr/0002-invented-design-tokens.md.
+ * When the real HANDOFF lands, this file is the single reconciliation surface.
+ *
+ * Two themes are expressed as [data-theme] attribute scopes set by the theme
+ * provider (src/providers/theme). :root carries the dark theme so the UI is themed
+ * before hydration and without JavaScript. Density is a separate [data-density]
+ * axis set by the density provider.
+ */
+
+/* ---- Theme-independent scales --------------------------------------------- */
+
+:root {
+  /* Type families — self-hosted, see src/styles/fonts.css */
+  --tm-font-sans: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --tm-font-display: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+  --tm-font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Type scale (rem @ 16px root); UI baseline is 14px */
+  --tm-text-2xs: 0.6875rem; /* 11 */
+  --tm-text-xs: 0.75rem; /* 12 */
+  --tm-text-sm: 0.8125rem; /* 13 */
+  --tm-text-base: 0.875rem; /* 14 */
+  --tm-text-md: 1rem; /* 16 */
+  --tm-text-lg: 1.125rem; /* 18 */
+  --tm-text-xl: 1.375rem; /* 22 */
+  --tm-text-2xl: 1.75rem; /* 28 */
+  --tm-text-3xl: 2.25rem; /* 36 */
+
+  --tm-leading-tight: 1.15;
+  --tm-leading-snug: 1.3;
+  --tm-leading-normal: 1.5;
+
+  --tm-weight-regular: 400;
+  --tm-weight-medium: 500;
+  --tm-weight-semibold: 600;
+
+  --tm-tracking-tight: -0.01em;
+  --tm-tracking-normal: 0em;
+  --tm-tracking-wide: 0.02em;
+  --tm-tracking-caps: 0.06em;
+
+  /* Spacing — 4px grid */
+  --tm-space-0: 0;
+  --tm-space-1: 0.25rem; /* 4 */
+  --tm-space-2: 0.5rem; /* 8 */
+  --tm-space-3: 0.75rem; /* 12 */
+  --tm-space-4: 1rem; /* 16 */
+  --tm-space-5: 1.25rem; /* 20 */
+  --tm-space-6: 1.5rem; /* 24 */
+  --tm-space-8: 2rem; /* 32 */
+  --tm-space-10: 2.5rem; /* 40 */
+  --tm-space-12: 3rem; /* 48 */
+  --tm-space-16: 4rem; /* 64 */
+
+  /* Radii */
+  --tm-radius-xs: 2px;
+  --tm-radius-sm: 4px;
+  --tm-radius-md: 6px;
+  --tm-radius-lg: 10px;
+  --tm-radius-full: 9999px;
+
+  /* Borders */
+  --tm-border-width: 1px;
+  --tm-border-width-strong: 1.5px;
+
+  /* Frame / corner-mark geometry (see Frame + Corner primitives) */
+  --tm-corner-len: 10px;
+  --tm-corner-thickness: 1.5px;
+  --tm-corner-inset: 0px;
+
+  /* Motion — mirrored in src/lib/motion.ts */
+  --tm-dur-instant: 80ms;
+  --tm-dur-fast: 140ms;
+  --tm-dur-base: 220ms;
+  --tm-dur-slow: 360ms;
+  --tm-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --tm-ease-emphasized: cubic-bezier(0.3, 0, 0, 1);
+  --tm-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Z-index scale */
+  --tm-z-base: 0;
+  --tm-z-dropdown: 1000;
+  --tm-z-sticky: 1100;
+  --tm-z-overlay: 1200;
+  --tm-z-modal: 1300;
+  --tm-z-toast: 1400;
+  --tm-z-tooltip: 1500;
+}
+
+/* ---- Density axis --------------------------------------------------------- */
+
+:root,
+[data-density='comfortable'] {
+  --tm-control-h-sm: 28px;
+  --tm-control-h-md: 34px;
+  --tm-control-h-lg: 42px;
+  --tm-control-pad-x: 12px;
+  --tm-row-h: 44px;
+  --tm-field-gap: var(--tm-space-2);
+}
+
+[data-density='compact'] {
+  --tm-control-h-sm: 24px;
+  --tm-control-h-md: 30px;
+  --tm-control-h-lg: 38px;
+  --tm-control-pad-x: 10px;
+  --tm-row-h: 36px;
+  --tm-field-gap: var(--tm-space-1);
+}
+
+/* ---- Dark theme (default) ------------------------------------------------- */
+
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --tm-bg: #0b0e14;
+  --tm-surface: #11151d;
+  --tm-surface-2: #171c26;
+  --tm-overlay: #1d2431;
+
+  --tm-fg: #e6e9ef;
+  --tm-fg-muted: #9aa3b2;
+  --tm-fg-subtle: #5f6875;
+  --tm-fg-on-accent: #04110f;
+
+  --tm-border: #242b38;
+  --tm-border-strong: #333c4d;
+
+  --tm-accent: #3dd6c4;
+  --tm-accent-fg: #04110f;
+  --tm-accent-muted: rgba(61, 214, 196, 0.12);
+  --tm-accent-border: rgba(61, 214, 196, 0.4);
+
+  --tm-ring: rgba(61, 214, 196, 0.55);
+
+  --tm-corner-color: var(--tm-border-strong);
+
+  --tm-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --tm-shadow-2: 0 8px 24px -6px rgba(0, 0, 0, 0.6);
+
+  /* Dataset state colours — see src/lib/state.ts */
+  --tm-state-fresh: #34d399;
+  --tm-state-fresh-bg: rgba(52, 211, 153, 0.12);
+  --tm-state-fresh-border: rgba(52, 211, 153, 0.38);
+
+  --tm-state-stale: #fbbf24;
+  --tm-state-stale-bg: rgba(251, 191, 36, 0.12);
+  --tm-state-stale-border: rgba(251, 191, 36, 0.38);
+
+  --tm-state-late: #fb923c;
+  --tm-state-late-bg: rgba(251, 146, 60, 0.12);
+  --tm-state-late-border: rgba(251, 146, 60, 0.38);
+
+  --tm-state-error: #f87171;
+  --tm-state-error-bg: rgba(248, 113, 113, 0.12);
+  --tm-state-error-border: rgba(248, 113, 113, 0.38);
+
+  --tm-state-unknown: #94a3b8;
+  --tm-state-unknown-bg: rgba(148, 163, 184, 0.12);
+  --tm-state-unknown-border: rgba(148, 163, 184, 0.34);
+
+  --tm-state-paused: #818cf8;
+  --tm-state-paused-bg: rgba(129, 140, 248, 0.12);
+  --tm-state-paused-border: rgba(129, 140, 248, 0.34);
+}
+
+/* ---- Light theme ---------------------------------------------------------- */
+
+[data-theme='light'] {
+  color-scheme: light;
+
+  --tm-bg: #f6f7f9;
+  --tm-surface: #ffffff;
+  --tm-surface-2: #f0f2f5;
+  --tm-overlay: #ffffff;
+
+  --tm-fg: #10151d;
+  --tm-fg-muted: #5b6572;
+  --tm-fg-subtle: #8a93a2;
+  --tm-fg-on-accent: #ffffff;
+
+  --tm-border: #e2e6ec;
+  --tm-border-strong: #cdd3dc;
+
+  --tm-accent: #0d9488;
+  --tm-accent-fg: #ffffff;
+  --tm-accent-muted: rgba(13, 148, 136, 0.1);
+  --tm-accent-border: rgba(13, 148, 136, 0.4);
+
+  --tm-ring: rgba(13, 148, 136, 0.45);
+
+  --tm-corner-color: var(--tm-border-strong);
+
+  --tm-shadow-1: 0 1px 2px rgba(16, 21, 29, 0.08);
+  --tm-shadow-2: 0 8px 24px -6px rgba(16, 21, 29, 0.16);
+
+  --tm-state-fresh: #059669;
+  --tm-state-fresh-bg: rgba(5, 150, 105, 0.1);
+  --tm-state-fresh-border: rgba(5, 150, 105, 0.35);
+
+  --tm-state-stale: #d97706;
+  --tm-state-stale-bg: rgba(217, 119, 6, 0.1);
+  --tm-state-stale-border: rgba(217, 119, 6, 0.35);
+
+  --tm-state-late: #ea580c;
+  --tm-state-late-bg: rgba(234, 88, 12, 0.1);
+  --tm-state-late-border: rgba(234, 88, 12, 0.35);
+
+  --tm-state-error: #dc2626;
+  --tm-state-error-bg: rgba(220, 38, 38, 0.1);
+  --tm-state-error-border: rgba(220, 38, 38, 0.35);
+
+  --tm-state-unknown: #64748b;
+  --tm-state-unknown-bg: rgba(100, 116, 139, 0.1);
+  --tm-state-unknown-border: rgba(100, 116, 139, 0.3);
+
+  --tm-state-paused: #4f46e5;
+  --tm-state-paused-bg: rgba(79, 70, 229, 0.1);
+  --tm-state-paused-border: rgba(79, 70, 229, 0.3);
+}
+
+/*
+ * Tailwind v4 token mapping. `@theme inline` emits utilities that reference the
+ * --tm-* variables directly, so a single utility (e.g. bg-surface) follows the
+ * active [data-theme] at runtime instead of being frozen at build time.
+ */
+@theme inline {
+  --color-bg: var(--tm-bg);
+  --color-surface: var(--tm-surface);
+  --color-surface-2: var(--tm-surface-2);
+  --color-overlay: var(--tm-overlay);
+
+  --color-fg: var(--tm-fg);
+  --color-fg-muted: var(--tm-fg-muted);
+  --color-fg-subtle: var(--tm-fg-subtle);
+  --color-fg-on-accent: var(--tm-fg-on-accent);
+
+  --color-border: var(--tm-border);
+  --color-border-strong: var(--tm-border-strong);
+
+  --color-accent: var(--tm-accent);
+  --color-accent-fg: var(--tm-accent-fg);
+  --color-accent-muted: var(--tm-accent-muted);
+  --color-accent-border: var(--tm-accent-border);
+
+  --color-ring: var(--tm-ring);
+
+  --color-fresh: var(--tm-state-fresh);
+  --color-fresh-bg: var(--tm-state-fresh-bg);
+  --color-fresh-border: var(--tm-state-fresh-border);
+  --color-stale: var(--tm-state-stale);
+  --color-stale-bg: var(--tm-state-stale-bg);
+  --color-stale-border: var(--tm-state-stale-border);
+  --color-late: var(--tm-state-late);
+  --color-late-bg: var(--tm-state-late-bg);
+  --color-late-border: var(--tm-state-late-border);
+  --color-error: var(--tm-state-error);
+  --color-error-bg: var(--tm-state-error-bg);
+  --color-error-border: var(--tm-state-error-border);
+  --color-unknown: var(--tm-state-unknown);
+  --color-unknown-bg: var(--tm-state-unknown-bg);
+  --color-unknown-border: var(--tm-state-unknown-border);
+  --color-paused: var(--tm-state-paused);
+  --color-paused-bg: var(--tm-state-paused-bg);
+  --color-paused-border: var(--tm-state-paused-border);
+
+  --font-sans: var(--tm-font-sans);
+  --font-display: var(--tm-font-display);
+  --font-mono: var(--tm-font-mono);
+
+  --radius-xs: var(--tm-radius-xs);
+  --radius-sm: var(--tm-radius-sm);
+  --radius-md: var(--tm-radius-md);
+  --radius-lg: var(--tm-radius-lg);
+  --radius-full: var(--tm-radius-full);
+
+  --shadow-1: var(--tm-shadow-1);
+  --shadow-2: var(--tm-shadow-2);
+}
